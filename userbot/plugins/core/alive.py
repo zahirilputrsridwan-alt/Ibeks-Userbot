@@ -14,14 +14,15 @@ import sys
 import pyrogram
 from pyrogram import filters
 
-from config import BOT_NAME, VERSION, AUTO_DELETE_CMD, CMD_PREFIX
+from config import BOT_NAME, VERSION, AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
+from utils.filters import dynamic_command
 
 
 def setup(client):
     """Daftarkan handler .alive pada instance client."""
 
-    @client.on_message(filters.command("alive", prefixes=CMD_PREFIX) & filters.me)
+    @client.on_message(dynamic_command("alive") & filters.me)
     async def cmd_alive(client, message):
         """Handler command .alive"""
         # Hapus pesan command asli

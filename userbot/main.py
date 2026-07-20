@@ -13,10 +13,12 @@ import pyrogram
 from pyrogram import Client, filters, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
-from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX
+from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX, MAIN_FILE, RESTART_STATE_FILE
 from db import init_db
 from loader import load_plugins
 from utils.logger import log
+from utils.prefix_manager import set_owner_id, get_prefix
+from utils.error_handler import patch_client_handlers
 
 
 def validate_config() -> None:
@@ -35,6 +37,28 @@ def validate_config() -> None:
         sys.exit(1)
 
 
+def _read_restart_state() -> dict:
+    """Baca state restart dari file."""
+    if not os.path.exists(RESTART_STATE_FILE):
+        return {}
+    try:
+        with open(RESTART_STATE_FILE, "r", encoding="utf-8") as f:
+            chat_id = f.read().strip()
+        return {"chat_id": int(chat_id)} if chat_id else {}
+    except Exception as exc:
+        log.warning(f"[Main] Gagal membaca state restart: {exc}")
+    return {}
+
+
+def _clear_restart_state() -> None:
+    """Hapus file state restart jika ada."""
+    try:
+        if os.path.exists(RESTART_STATE_FILE):
+            os.remove(RESTART_STATE_FILE)
+    except Exception as exc:
+        log.warning(f"[Main] Gagal menghapus state restart: {exc}")
+
+
 def log_startup_info(client, me, plugin_stats) -> None:
     """Tampilkan informasi debug saat startup."""
     owner = me.first_name or me.username or "Unknown"
@@ -42,7 +66,7 @@ def log_startup_info(client, me, plugin_stats) -> None:
     log.info("✓ Userbot aktif")
     log.info(f"Nama akun Telegram : {owner}")
     log.info(f"User ID            : {me.id}")
-    log.info(f"Prefix             : {CMD_PREFIX}")
+    log.info(f"Prefix             : {get_prefix()}")
     log.info(f"Jumlah plugin      : {len(plugin_stats['loaded'])} dimuat, {len(plugin_stats['failed'])} gagal")
     if plugin_stats['loaded']:
         log.info(f"Plugins aktif      : {', '.join(plugin_stats['loaded'])}")
@@ -72,6 +96,9 @@ def main() -> None:
         in_memory=True,       # Tidak menyimpan file .session di disk
     )
 
+    # ── Patch handler agar error plugin tidak merusak bot ─────────────────────
+    patch_client_handlers(client)
+
     # ── Muat semua plugin ke instance client ──────────────────────────────────
     plugin_stats = load_plugins(client)
 
@@ -92,7 +119,19 @@ def main() -> None:
         client.start()
 
         me = client.get_me()
+        # Cache owner ID untuk prefix manager dan utilities lain
+        set_owner_id(me.id)
+
         log_startup_info(client, me, plugin_stats)
+
+        # Kirim notifikasi restart jika bot baru saja dihidupkan ulang
+        restart_state = _read_restart_state()
+        if restart_state:
+            try:
+                client.send_message(restart_state["chat_id"], "✅ Userbot berhasil direstart.")
+            except Exception as exc:
+                log.warning(f"[Main] Gagal mengirim pesan restart: {exc}")
+            _clear_restart_state()
 
         idle()
     except ApiIdInvalid:

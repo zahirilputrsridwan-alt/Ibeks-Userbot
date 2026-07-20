@@ -14,16 +14,17 @@ import time
 
 from pyrogram import filters
 
-from config import BOT_NAME, VERSION, AUTO_DELETE_CMD, CMD_PREFIX
+from config import BOT_NAME, VERSION, AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.helper import get_ram_usage, get_cpu_usage
 from utils.uptime import format_uptime
+from utils.filters import dynamic_command
 
 
 def setup(client):
     """Daftarkan handler .ping pada instance client."""
 
-    @client.on_message(filters.command("ping", prefixes=CMD_PREFIX) & filters.me)
+    @client.on_message(dynamic_command("ping") & filters.me)
     async def cmd_ping(client, message):
         """Handler command .ping"""
         # Hapus pesan command asli

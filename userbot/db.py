@@ -22,6 +22,42 @@ def get_conn() -> sqlite3.Connection:
     return _local.conn
 
 
+def _migrate_old_settings(cursor: sqlite3.Cursor) -> None:
+    """Migrasi tabel settings dari schema lama (key, value) ke schema baru."""
+    cursor.execute("PRAGMA table_info(settings)")
+    columns = [row["name"] for row in cursor.fetchall()]
+
+    if not columns or "telegram_id" in columns:
+        return
+
+    # Schema lama terdeteksi, ambil prefix jika ada lalu drop
+    old_prefix = None
+    if "key" in columns:
+        try:
+            row = cursor.execute(
+                "SELECT value FROM settings WHERE key = ?", ("prefix",)
+            ).fetchone()
+            old_prefix = row["value"] if row else None
+        except Exception as exc:
+            log.warning(f"[DB] Gagal membaca prefix lama: {exc}")
+
+    cursor.execute("DROP TABLE settings")
+    cursor.execute("""
+        CREATE TABLE settings (
+            telegram_id  INTEGER PRIMARY KEY,
+            prefix       TEXT,
+            updated_at   TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
+    if old_prefix:
+        cursor.execute(
+            "INSERT INTO settings (telegram_id, prefix) VALUES (?, ?)",
+            (0, old_prefix),
+        )
+        log.info(f"[DB] Migrasi prefix lama: {old_prefix}")
+
+
 def init_db() -> None:
     """
     Buat semua tabel yang diperlukan jika belum ada.
@@ -43,12 +79,14 @@ def init_db() -> None:
     # ── Tabel: settings ───────────────────────────────────────────────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
-            key     TEXT PRIMARY KEY,
-            value   TEXT
+            telegram_id  INTEGER PRIMARY KEY,
+            prefix       TEXT,
+            updated_at   TEXT DEFAULT (datetime('now'))
         )
     """)
+    _migrate_old_settings(cursor)
 
-    # ── Tabel: logs (opsional, untuk audit sederhana) ─────────────────────────
+    # ── Tabel: command_logs (audit sederhana) ─────────────────────────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS command_logs (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,21 +101,23 @@ def init_db() -> None:
     log.info("[DB] Database diinisialisasi.")
 
 
-# ── Helper: settings ──────────────────────────────────────────────────────────
+# ── Helper: prefix settings ───────────────────────────────────────────────────
 
-def get_setting(key: str, default: str = "") -> str:
-    """Ambil nilai setting berdasarkan key."""
+def get_prefix(telegram_id: int, default: str = ".") -> str:
+    """Ambil prefix untuk telegram_id tertentu."""
     conn = get_conn()
-    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-    return row["value"] if row else default
+    row = conn.execute(
+        "SELECT prefix FROM settings WHERE telegram_id = ?", (telegram_id,)
+    ).fetchone()
+    return row["prefix"] if row and row["prefix"] else default
 
 
-def set_setting(key: str, value: str) -> None:
-    """Simpan atau perbarui setting."""
+def set_prefix(telegram_id: int, prefix: str) -> None:
+    """Simpan atau perbarui prefix untuk telegram_id tertentu."""
     conn = get_conn()
     conn.execute(
-        "INSERT INTO settings (key, value) VALUES (?, ?) "
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        (key, value),
+        "INSERT INTO settings (telegram_id, prefix, updated_at) VALUES (?, ?, datetime('now')) "
+        "ON CONFLICT(telegram_id) DO UPDATE SET prefix = excluded.prefix, updated_at = excluded.updated_at",
+        (telegram_id, prefix),
     )
     conn.commit()

@@ -16,13 +16,17 @@ STRING_SESSION: str = os.environ.get("STRING_SESSION", "")
 # ── Bot metadata ──────────────────────────────────────────────────────────────
 BOT_NAME: str = "IBEKS USERBOT"
 VERSION: str = "1.0.0"
-CMD_PREFIX: str = "."
+CMD_PREFIX: str = "."  # Default fallback; prefix aktif dibaca dari database
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
 PLUGINS_DIR: str = os.path.join(BASE_DIR, "plugins")
 DATABASE_PATH: str = os.path.join(BASE_DIR, "database.db")
 LOGS_DIR: str = os.path.join(BASE_DIR, "logs")
+MAIN_FILE: str = os.path.join(BASE_DIR, "main.py")
+
+# ── Restart state ─────────────────────────────────────────────────────────────
+RESTART_STATE_FILE: str = os.path.join(BASE_DIR, ".restart_state")
 
 # ── Auto-delete delay (detik) ─────────────────────────────────────────────────
 AUTO_DELETE_CMD: int = 5   # Hapus pesan command setelah N detik
