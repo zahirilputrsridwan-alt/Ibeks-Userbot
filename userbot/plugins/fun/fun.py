@@ -32,20 +32,19 @@ def setup(client):
             await client.send_message(chat_id, "❌ Tidak dapat menemukan target user.")
             return
 
-        name, user_id, progress, aura, penampilan, keunggulan, tier = generate_ctampan(target_user)
+        name, user_id, progress, aura, outfit, plus, tier = generate_ctampan(target_user)
 
         text = (
             "✨ CEK TAMPAN — REPORT ✨\n"
             "━━━━━━ ★ ━━━━━━\n\n"
             f"👤 Target : `{name}`\n"
             f"🆔 ID : `{user_id}`\n\n"
-            "📊 Level Ketampanan\n\n"
+            "📊 Ketampanan\n"
             f"{progress}\n\n"
-            f"😎 Aura : {aura}\n\n"
-            f"👕 Penampilan : {penampilan}\n\n"
-            f"⭐ Keunggulan : {keunggulan}\n\n"
+            f"😎 Aura : {aura}\n"
+            f"👕 Outfit : {outfit}\n"
+            f"⭐ Plus : {plus}\n"
             f"🏆 Tier : {tier}\n\n"
-            "━━━━━━━━━━━━━━\n"
             "⨱ IBEKS USERBOT ⨱"
         )
         await client.send_message(chat_id, text)
@@ -62,20 +61,19 @@ def setup(client):
             await client.send_message(chat_id, "❌ Tidak dapat menemukan target user.")
             return
 
-        name, user_id, progress, aura, penampilan, keunggulan, tier = generate_ccantik(target_user)
+        name, user_id, progress, aura, outfit, plus, tier = generate_ccantik(target_user)
 
         text = (
             "✨ CEK CANTIK — REPORT ✨\n"
             "━━━━━━ ★ ━━━━━━\n\n"
             f"👤 Target : `{name}`\n"
             f"🆔 ID : `{user_id}`\n\n"
-            "📊 Level Kecantikan\n\n"
+            "📊 Kecantikan\n"
             f"{progress}\n\n"
-            f"💖 Aura : {aura}\n\n"
-            f"👗 Penampilan : {penampilan}\n\n"
-            f"⭐ Keunggulan : {keunggulan}\n\n"
+            f"💖 Aura : {aura}\n"
+            f"👗 Outfit : {outfit}\n"
+            f"⭐ Plus : {plus}\n"
             f"🏆 Tier : {tier}\n\n"
-            "━━━━━━━━━━━━━━\n"
             "⨱ IBEKS USERBOT ⨱"
         )
         await client.send_message(chat_id, text)

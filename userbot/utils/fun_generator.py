@@ -43,10 +43,10 @@ def _safe_name(user: User) -> str:
     return name or user.username or "Unknown"
 
 
-def generate_ctampan(user: User) -> Tuple[str, int, str, str, str, str]:
+def generate_ctampan(user: User) -> Tuple[str, int, str, str, str, str, str]:
     """
     Generate laporan .ctampan.
-    Return (target_name, user_id, progress_bar, aura, penampilan, keunggulan, tier).
+    Return (target_name, user_id, progress_bar, aura, outfit, plus, tier).
     """
     seed = user.id * 100000 + _current_week_seed()
     rng = random.Random(seed)
@@ -54,17 +54,17 @@ def generate_ctampan(user: User) -> Tuple[str, int, str, str, str, str]:
     percent = rng.randint(50, 100)
     progress = _build_progress_bar(percent)
     aura = rng.choice(CTAMPAN_AURA)
-    penampilan = rng.choice(CTAMPAN_PENAMPILAN)
-    keunggulan = rng.choice(CTAMPAN_KEUNGGULAN)
+    outfit = rng.choice(CTAMPAN_PENAMPILAN)
+    plus = rng.choice(CTAMPAN_KEUNGGULAN)
     tier = rng.choice(CTAMPAN_TIER)
 
-    return _safe_name(user), user.id, progress, aura, penampilan, keunggulan, tier
+    return _safe_name(user), user.id, progress, aura, outfit, plus, tier
 
 
 def generate_ccantik(user: User) -> Tuple[str, int, str, str, str, str, str]:
     """
     Generate laporan .ccantik.
-    Return (target_name, user_id, progress_bar, aura, penampilan, keunggulan, tier).
+    Return (target_name, user_id, progress_bar, aura, outfit, plus, tier).
     """
     seed = user.id * 100000 + _current_week_seed() + 7
     rng = random.Random(seed)
@@ -72,8 +72,8 @@ def generate_ccantik(user: User) -> Tuple[str, int, str, str, str, str, str]:
     percent = rng.randint(50, 100)
     progress = _build_progress_bar(percent)
     aura = rng.choice(CCANTIK_AURA)
-    penampilan = rng.choice(CCANTIK_PENAMPILAN)
-    keunggulan = rng.choice(CCANTIK_KEUNGGULAN)
+    outfit = rng.choice(CCANTIK_PENAMPILAN)
+    plus = rng.choice(CCANTIK_KEUNGGULAN)
     tier = rng.choice(CCANTIK_TIER)
 
-    return _safe_name(user), user.id, progress, aura, penampilan, keunggulan, tier
+    return _safe_name(user), user.id, progress, aura, outfit, plus, tier
