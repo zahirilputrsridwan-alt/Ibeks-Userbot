@@ -1,44 +1,55 @@
-# [Project name]
+# IBEKS USERBOT
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Telegram Userbot modern berbasis Python 3.11 + Pyrogram, struktur modular, plugin loader otomatis, dan SQLite.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Workflow: **IBEKS USERBOT** → `cd userbot && python main.py`
+- Required secrets: `API_ID`, `API_HASH`, `STRING_SESSION` (Replit Secrets)
+- Logs: `userbot/logs/ibeks.log`
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Python 3.11
+- Pyrogram 2.0.106 + TgCrypto 1.2.5
+- SQLite (bawaan Python, db di `userbot/database.db`)
+- python-dotenv 1.0.1
+- psutil 5.9.8
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- Entry point: `userbot/main.py`
+- Konfigurasi: `userbot/config.py`
+- Plugin loader: `userbot/loader.py`
+- Database helpers: `userbot/db.py`
+- Plugins: `userbot/plugins/<kategori>/<nama>.py`
+- Utilities: `userbot/utils/`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Plugin loader scan `plugins/` secara rekursif — tambah file `.py` baru, langsung aktif tanpa import manual.
+- `in_memory=True` di Pyrogram: session tidak disimpan ke disk, selalu pakai STRING_SESSION dari secret.
+- Auto-delete hanya hapus pesan command (bukan reply) via `asyncio.create_task` agar tidak blocking.
+- SQLite dengan `check_same_thread=False` + thread-local connection untuk kompatibilitas asyncio.
+- Semua kredensial dibaca dari environment, tidak pernah hardcode.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+IBEKS USERBOT — Tahap 1 aktif:
+- `.ping` — status bot, uptime, RAM, CPU, owner
+- `.alive` — cek status online + info versi
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Bahasa Indonesia untuk dokumentasi dan komentar kode.
+- Struktur modular: setiap command dalam file plugin terpisah.
+- Kembangkan secara bertahap, tunggu instruksi per tahap.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Jalankan `pip install -r userbot/requirements.txt` jika packages hilang.
+- Untuk generate STRING_SESSION baru: `python -c "from pyrogram import Client; c=Client(':memory:',int(input('id:')),input('hash:')); c.start(); print(c.export_session_string()); c.stop()"`
+- Plugin hanya aktif saat bot direstart setelah menambahkan file plugin baru.
 
 ## Pointers
 
