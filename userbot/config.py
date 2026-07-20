@@ -16,6 +16,7 @@ STRING_SESSION: str = os.environ.get("STRING_SESSION", "")
 # ── Bot metadata ──────────────────────────────────────────────────────────────
 BOT_NAME: str = "IBEKS USERBOT"
 VERSION: str = "1.0.0"
+CMD_PREFIX: str = "."
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))

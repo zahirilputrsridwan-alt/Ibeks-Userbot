@@ -13,7 +13,7 @@ import pyrogram
 from pyrogram import Client, filters, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
-from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION
+from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX
 from db import init_db
 from loader import load_plugins
 from utils.logger import log
@@ -35,6 +35,21 @@ def validate_config() -> None:
         sys.exit(1)
 
 
+def log_startup_info(client, me, plugin_stats) -> None:
+    """Tampilkan informasi debug saat startup."""
+    owner = me.first_name or me.username or "Unknown"
+    log.info("✓ Login berhasil")
+    log.info("✓ Userbot aktif")
+    log.info(f"Nama akun Telegram : {owner}")
+    log.info(f"User ID            : {me.id}")
+    log.info(f"Prefix             : {CMD_PREFIX}")
+    log.info(f"Jumlah plugin      : {len(plugin_stats['loaded'])} dimuat, {len(plugin_stats['failed'])} gagal")
+    if plugin_stats['loaded']:
+        log.info(f"Plugins aktif      : {', '.join(plugin_stats['loaded'])}")
+    if plugin_stats['failed']:
+        log.warning(f"Plugins gagal      : {', '.join(plugin_stats['failed'])}")
+
+
 def main() -> None:
     """Titik masuk utama IBEKS USERBOT."""
     log.info(f"╭━━━━━━━━━━━━━━━━━━━━━━╮")
@@ -48,12 +63,6 @@ def main() -> None:
     # ── Inisialisasi database ─────────────────────────────────────────────────
     init_db()
 
-    # ── Muat semua plugin SEBELUM client dibuat ───────────────────────────────
-    # Agar handler @Client.on_message() tercatat pada class Pyrogram dan
-    # tersalin ke instance client saat dibuat.
-    total = load_plugins()
-    log.info(f"[Main] {total} plugin siap.")
-
     # ── Buat Pyrogram client ──────────────────────────────────────────────────
     client = Client(
         name="ibeks_userbot",
@@ -63,7 +72,10 @@ def main() -> None:
         in_memory=True,       # Tidak menyimpan file .session di disk
     )
 
-    # ── Debug handler: log semua pesan masuk (hanya log, tidak reply) ────────────
+    # ── Muat semua plugin ke instance client ──────────────────────────────────
+    plugin_stats = load_plugins(client)
+
+    # ── Debug handler: log semua pesan masuk (hanya log, tidak reply) ────────
     @client.on_message(filters.incoming)
     async def debug_incoming(_client, message):
         try:
@@ -74,14 +86,13 @@ def main() -> None:
         except Exception as exc:
             log.warning(f"[Debug] Gagal log pesan: {exc}")
 
-    # ── Jalankan client dengan start/idle agar bisa log status ───────────────────
+    # ── Jalankan client ───────────────────────────────────────────────────────
     try:
         log.info("[Main] Menghubungkan ke Telegram...")
         client.start()
 
         me = client.get_me()
-        owner = me.first_name or me.username or "Unknown"
-        log.info(f"[Main] ✅ Terhubung sebagai {owner} (@{me.username or 'n/a'}) | ID {me.id}")
+        log_startup_info(client, me, plugin_stats)
 
         idle()
     except ApiIdInvalid:
