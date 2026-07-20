@@ -20,8 +20,11 @@ def setup(client):
 
     @client.on_message(dynamic_command("joinvc") & filters.me)
     async def cmd_joinvc(client, message):
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         chat_id = message.chat.id
 
         success, text = await voice_manager.join(chat_id)
-        await client.send_message(chat_id, text)
+        result = await client.send_message(chat_id, text)
+
+        # Hapus command dan hasilnya setelah jeda
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        asyncio.create_task(auto_delete(result, delay=AUTO_DELETE_CMD))
