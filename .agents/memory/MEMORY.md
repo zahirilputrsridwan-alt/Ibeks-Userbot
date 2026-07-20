@@ -1,0 +1,1 @@
+- [PyTgCalls Python 3.11 compatibility](pytgcalls-python311.md) — stable wheels don't support Python 3.11; use the pre-release line with `--prerelease=allow`.

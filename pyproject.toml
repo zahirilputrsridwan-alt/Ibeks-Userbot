@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "psutil==5.9.8",
     "pyrogram==2.0.106",
+    "pytgcalls>=3.0.0.dev24",
     "python-dotenv==1.0.1",
     "tgcrypto==1.2.5",
 ]

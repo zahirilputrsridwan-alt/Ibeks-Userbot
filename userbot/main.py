@@ -19,6 +19,7 @@ from loader import load_plugins
 from utils.logger import log
 from utils.prefix_manager import set_owner_id, get_prefix
 from utils.error_handler import install_global_error_handler
+from utils.voice_manager import voice_manager
 
 
 def validate_config() -> None:
@@ -95,6 +96,9 @@ def main() -> None:
         session_string=STRING_SESSION,
         in_memory=True,       # Tidak menyimpan file .session di disk
     )
+
+    # ── Inisialisasi voice chat manager dengan client Pyrogram ───────────────
+    voice_manager.set_client(client)
 
     # ── Pasang global error handler agar error plugin tidak merusak bot ───────
     install_global_error_handler()
