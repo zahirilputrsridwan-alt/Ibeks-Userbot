@@ -1,0 +1,27 @@
+"""
+IBEKS USERBOT - Configuration
+Membaca semua konfigurasi dari environment variables (Replit Secrets).
+"""
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ── Telegram credentials ──────────────────────────────────────────────────────
+API_ID: int = int(os.environ.get("API_ID", 0))
+API_HASH: str = os.environ.get("API_HASH", "")
+STRING_SESSION: str = os.environ.get("STRING_SESSION", "")
+
+# ── Bot metadata ──────────────────────────────────────────────────────────────
+BOT_NAME: str = "IBEKS USERBOT"
+VERSION: str = "1.0.0"
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+PLUGINS_DIR: str = os.path.join(BASE_DIR, "plugins")
+DATABASE_PATH: str = os.path.join(BASE_DIR, "database.db")
+LOGS_DIR: str = os.path.join(BASE_DIR, "logs")
+
+# ── Auto-delete delay (detik) ─────────────────────────────────────────────────
+AUTO_DELETE_CMD: int = 5   # Hapus pesan command setelah N detik
