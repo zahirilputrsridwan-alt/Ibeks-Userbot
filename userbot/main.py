@@ -18,7 +18,7 @@ from db import init_db
 from loader import load_plugins
 from utils.logger import log
 from utils.prefix_manager import set_owner_id, get_prefix
-from utils.error_handler import patch_client_handlers
+from utils.error_handler import install_global_error_handler
 
 
 def validate_config() -> None:
@@ -96,8 +96,8 @@ def main() -> None:
         in_memory=True,       # Tidak menyimpan file .session di disk
     )
 
-    # ── Patch handler agar error plugin tidak merusak bot ─────────────────────
-    patch_client_handlers(client)
+    # ── Pasang global error handler agar error plugin tidak merusak bot ───────
+    install_global_error_handler()
 
     # ── Muat semua plugin ke instance client ──────────────────────────────────
     plugin_stats = load_plugins(client)

@@ -6,6 +6,7 @@ Setup logging terpusat menggunakan logging bawaan Python.
 import logging
 import os
 import sys
+import warnings
 from logging.handlers import RotatingFileHandler
 
 from config import LOGS_DIR, BOT_NAME
@@ -47,6 +48,25 @@ def setup_logger() -> logging.Logger:
 
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
+
+    # ── Capture warning dari asyncio dan library lain ───────────────────────────
+    warnings.filterwarnings("always")
+    logging.captureWarnings(True)
+
+    # ── Capture log dari Pyrogram dan library lain via root logger ────────────
+    root = logging.getLogger()
+    if not root.handlers:
+        root.addHandler(file_handler)
+        root.setLevel(logging.WARNING)
+    else:
+        # Pastikan file handler juga ada di root agar log pihak ketiga tersimpan
+        has_file = any(isinstance(h, RotatingFileHandler) and h.baseFilename == LOG_FILE for h in root.handlers)
+        if not has_file:
+            root.addHandler(file_handler)
+
+    # ── Logger Pyrogram khusus: turunkan level jika terlalu berisik ───────────
+    pyrogram_logger = logging.getLogger("pyrogram")
+    pyrogram_logger.setLevel(logging.WARNING)
 
     return logger
 

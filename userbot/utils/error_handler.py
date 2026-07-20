@@ -1,75 +1,47 @@
 """
 IBEKS USERBOT - Global Error Handler
-Menangkap error dari handler plugin, mencatatnya ke log file,
+Menangkap error tak terduga secara global, mencatatnya ke log file,
 dan mencegah bot crash akibat error plugin.
+
+Pyrogram sendiri sudah menangkap error di handler plugin sehingga bot
+ tidak crash. Error handler di sini menangkap error di luar handler
+(uncaught exception) dan memastikan log tetap tersimpan di file.
 """
 
 import asyncio
-import functools
+import sys
 import traceback
-from typing import Callable
-
-from pyrogram import Client
-from pyrogram.filters import Filter
-from pyrogram.types import Message
 
 from utils.logger import log
 
 
-HandlerType = Callable[[Client, Message], object]
+def _handle_exception(exc_type, exc_value, exc_traceback) -> None:
+    """Hook sys.excepthook untuk menangkap exception tak tertangani."""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    log.exception(f"[GlobalError] Uncaught exception: {exc_value}\n{tb}")
 
 
-def _handle_task_error(task) -> None:
-    """Callback untuk menangkap error dari async task handler."""
+def _handle_async_exception(loop, context) -> None:
+    """Hook asyncio exception handler untuk menangkap error di event loop."""
+    message = context.get("message", "Unknown async error")
+    exception = context.get("exception")
+    if exception:
+        tb = traceback.format_exception(type(exception), exception, exception.__traceback__)
+        log.exception(f"[GlobalError] Async error: {message}\n{''.join(tb)}")
+    else:
+        log.error(f"[GlobalError] Async error: {message}")
+
+
+def install_global_error_handler() -> None:
+    """Pasang hook global untuk menangkap error dan mencatatnya ke log."""
+    sys.excepthook = _handle_exception
+
     try:
-        task.result()
-    except Exception as exc:
-        name = getattr(task, "__handler_name__", "unknown")
-        tb = traceback.format_exc()
-        log.exception(f"[ErrorHandler] Error di handler '{name}': {exc}\n{tb}")
-
-
-def wrap_handler(handler: HandlerType) -> HandlerType:
-    """
-    Bungkus handler Pyrogram agar error ditangkap dan dicatat.
-    Error tidak akan diteruskan ke atas sehingga bot tetap berjalan.
-
-    Wrapper ini bersifat synchronous sehingga kompatibel dengan mekanisme
-    dispatcher Pyrogram 2.x, dan menjalankan handler async di dalam task.
-    """
-    @functools.wraps(handler)
-    def wrapper(client: Client, message: Message):
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            log.error(f"[ErrorHandler] Tidak ada event loop saat menjalankan {handler.__name__}")
-            return
-
-        task = loop.create_task(handler(client, message))
-        task.__handler_name__ = getattr(handler, "__name__", "unknown")
-        task.add_done_callback(_handle_task_error)
-
-    return wrapper
-
-
-def patch_client_handlers(client: Client) -> None:
-    """
-    Patch `client.on_message` sehingga setiap handler yang didaftarkan
-    secara otomatis dibungkus dengan error handler.
-    Panggil fungsi ini sebelum load_plugins().
-    """
-    original_on_message = client.on_message
-
-    def wrapped_on_message(filters=None, group: int = 0):
-        # Jika on_message dipanggil sebagai decorator tanpa argumen, filters adalah handler
-        if callable(filters) and not isinstance(filters, Filter):
-            handler = filters
-            wrapped = wrap_handler(handler)
-            return original_on_message(wrapped, group)
-
-        def decorator(handler):
-            wrapped = wrap_handler(handler)
-            return original_on_message(filters, group)(wrapped)
-        return decorator
-
-    client.on_message = wrapped_on_message
+        loop = asyncio.get_running_loop()
+        loop.set_exception_handler(_handle_async_exception)
+    except RuntimeError:
+        # Belum ada loop yang running; biarkan Pyrogram mengatur loop-nya nanti
+        pass
