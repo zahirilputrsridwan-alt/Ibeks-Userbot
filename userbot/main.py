@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pyrogram
-from pyrogram import Client, idle
+from pyrogram import Client, filters, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
 from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION
@@ -56,6 +56,17 @@ def main() -> None:
         session_string=STRING_SESSION,
         in_memory=True,       # Tidak menyimpan file .session di disk
     )
+
+    # ── Debug handler: log semua pesan masuk (hanya log, tidak reply) ────────────
+    @client.on_message(filters.incoming)
+    async def debug_incoming(_client, message):
+        try:
+            chat_id = message.chat.id if message.chat else "n/a"
+            from_id = message.from_user.id if message.from_user else "n/a"
+            text = message.text or message.caption or "[no text]"
+            log.info(f"[Debug] Incoming msg | chat={chat_id} from={from_id} text={text!r}")
+        except Exception as exc:
+            log.warning(f"[Debug] Gagal log pesan: {exc}")
 
     # ── Muat semua plugin ─────────────────────────────────────────────────────
     total = load_plugins(client)
