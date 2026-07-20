@@ -48,6 +48,12 @@ def main() -> None:
     # ── Inisialisasi database ─────────────────────────────────────────────────
     init_db()
 
+    # ── Muat semua plugin SEBELUM client dibuat ───────────────────────────────
+    # Agar handler @Client.on_message() tercatat pada class Pyrogram dan
+    # tersalin ke instance client saat dibuat.
+    total = load_plugins()
+    log.info(f"[Main] {total} plugin siap.")
+
     # ── Buat Pyrogram client ──────────────────────────────────────────────────
     client = Client(
         name="ibeks_userbot",
@@ -67,10 +73,6 @@ def main() -> None:
             log.info(f"[Debug] Incoming msg | chat={chat_id} from={from_id} text={text!r}")
         except Exception as exc:
             log.warning(f"[Debug] Gagal log pesan: {exc}")
-
-    # ── Muat semua plugin ─────────────────────────────────────────────────────
-    total = load_plugins(client)
-    log.info(f"[Main] {total} plugin siap.")
 
     # ── Jalankan client dengan start/idle agar bisa log status ───────────────────
     try:

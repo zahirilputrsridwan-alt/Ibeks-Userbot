@@ -2,6 +2,10 @@
 IBEKS USERBOT - Plugin Loader
 Memuat semua plugin dalam folder plugins/ secara otomatis.
 Tidak ada import manual yang diperlukan.
+
+Plugin didaftarkan dengan decorator `@Client.on_message(...)` pada class Pyrogram.
+Karena itu, loader harus dipanggil SEBELUM instance Client dibuat,
+agar handler tersalin ke instance client saat instantiate.
 """
 
 import importlib
@@ -12,15 +16,14 @@ from utils.logger import log
 from config import PLUGINS_DIR
 
 
-def load_plugins(client) -> int:
+def load_plugins() -> int:
     """
-    Scan seluruh subdirektori dalam PLUGINS_DIR dan muat setiap file .py
-    sebagai modul Pyrogram. Kembalikan jumlah plugin yang berhasil dimuat.
+    Scan seluruh subdirektori dalam PLUGINS_DIR dan import setiap file .py.
+    Kembalikan jumlah plugin yang berhasil dimuat.
 
-    Parameters
-    ----------
-    client : pyrogram.Client
-        Instance Pyrogram yang akan digunakan plugin untuk mendaftar handler.
+    Handler Pyrogram (decorator @Client.on_message) didaftarkan saat modul
+    di-import, sehingga client yang dibuat setelahnya akan otomatis memiliki
+    handler-handler tersebut.
     """
     loaded = 0
     failed = 0
@@ -45,12 +48,7 @@ def load_plugins(client) -> int:
             module_name = rel_path.replace(os.sep, ".").removesuffix(".py")
 
             try:
-                module = importlib.import_module(module_name)
-
-                # Daftarkan handler ke client jika modul menyediakan fungsi setup()
-                if hasattr(module, "setup"):
-                    module.setup(client)
-
+                importlib.import_module(module_name)
                 log.info(f"[Loader] ✓ Plugin dimuat: {module_name}")
                 loaded += 1
             except Exception as exc:
