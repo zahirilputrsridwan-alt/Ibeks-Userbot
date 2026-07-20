@@ -9,4 +9,7 @@ dependencies = [
     "pytgcalls>=3.0.0.dev24",
     "python-dotenv==1.0.1",
     "tgcrypto==1.2.5",
+    "pillow==10.4.0",
+    "qrcode==7.4.2",
+    "python-barcode==0.15.1",
 ]

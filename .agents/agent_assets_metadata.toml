@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "_-RIZX3P5xO2fxJvhyuZO"
+uri = "file://userbot/test_id_card.png"
+type = "image"
+title = "IBEKS USERBOT ID Card Preview"
