@@ -10,6 +10,7 @@ import traceback
 from typing import Callable
 
 from pyrogram import Client
+from pyrogram.filters import Filter
 from pyrogram.types import Message
 
 from utils.logger import log
@@ -61,7 +62,7 @@ def patch_client_handlers(client: Client) -> None:
 
     def wrapped_on_message(filters=None, group: int = 0):
         # Jika on_message dipanggil sebagai decorator tanpa argumen, filters adalah handler
-        if callable(filters) and not hasattr(filters, "filters"):
+        if callable(filters) and not isinstance(filters, Filter):
             handler = filters
             wrapped = wrap_handler(handler)
             return original_on_message(wrapped, group)
