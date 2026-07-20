@@ -2,6 +2,11 @@
 IBEKS USERBOT - Plugin: ping
 Command: .ping
 Menampilkan status bot, uptime, RAM, CPU, dan info owner.
+
+Flow:
+1. Hapus pesan command asli.
+2. Kirim pesan baru sebagai response.
+3. Edit response ke hasil akhir.
 """
 
 import asyncio
@@ -21,9 +26,14 @@ def setup(client):
     @client.on_message(filters.command("ping", prefixes=CMD_PREFIX) & filters.me)
     async def cmd_ping(client, message):
         """Handler command .ping"""
-        # Ukur ping lokal (waktu edit pesan)
+        # Hapus pesan command asli
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+
+        chat_id = message.chat.id
+
+        # Ukur ping lokal (waktu kirim pesan "loading")
         t_start = time.monotonic()
-        sent = await message.edit("🏓 Mengukur ping...")
+        sent = await client.send_message(chat_id, "🏓 Mengukur ping...")
         ping_ms = round((time.monotonic() - t_start) * 1000, 2)
 
         # Ukur API ping via get_me()
@@ -60,6 +70,3 @@ def setup(client):
         )
 
         await sent.edit(text)
-
-        # Hapus pesan command asli (bukan balasan)
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))

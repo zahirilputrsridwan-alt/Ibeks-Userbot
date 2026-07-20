@@ -2,6 +2,10 @@
 IBEKS USERBOT - Plugin: alive
 Command: .alive
 Menampilkan status online bot beserta info versi dan owner.
+
+Flow:
+1. Hapus pesan command asli.
+2. Kirim pesan baru sebagai response.
 """
 
 import asyncio
@@ -20,6 +24,9 @@ def setup(client):
     @client.on_message(filters.command("alive", prefixes=CMD_PREFIX) & filters.me)
     async def cmd_alive(client, message):
         """Handler command .alive"""
+        # Hapus pesan command asli
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+
         me = await client.get_me()
         owner = me.first_name or me.username or "Unknown"
         python_ver = sys.version.split()[0]
@@ -34,7 +41,4 @@ def setup(client):
             f"**Owner**    : `{owner}`"
         )
 
-        await message.edit(text)
-
-        # Hapus pesan command asli
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        await client.send_message(message.chat.id, text)
