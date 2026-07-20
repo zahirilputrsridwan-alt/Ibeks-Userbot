@@ -97,6 +97,15 @@ def init_db() -> None:
         )
     """)
 
+    # ── Tabel: blacklist (broadcast) ────────────────────────────────────────────
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS blacklist (
+            chat_id     INTEGER PRIMARY KEY,
+            chat_title  TEXT,
+            created_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     log.info("[DB] Database diinisialisasi.")
 
@@ -121,3 +130,47 @@ def set_prefix(telegram_id: int, prefix: str) -> None:
         (telegram_id, prefix),
     )
     conn.commit()
+
+
+# ── Helper: blacklist ─────────────────────────────────────────────────────────
+
+def add_blacklist(chat_id: int, chat_title: str | None = None) -> bool:
+    """Tambahkan chat ke blacklist. Return True jika berhasil, False jika sudah ada."""
+    conn = get_conn()
+    existing = conn.execute(
+        "SELECT chat_id FROM blacklist WHERE chat_id = ?", (chat_id,)
+    ).fetchone()
+    if existing:
+        return False
+    conn.execute(
+        "INSERT INTO blacklist (chat_id, chat_title) VALUES (?, ?)",
+        (chat_id, chat_title or "Unknown"),
+    )
+    conn.commit()
+    return True
+
+
+def del_blacklist(chat_id: int) -> bool:
+    """Hapus chat dari blacklist. Return True jika ditemukan dan dihapus."""
+    conn = get_conn()
+    cursor = conn.execute("DELETE FROM blacklist WHERE chat_id = ?", (chat_id,))
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def is_blacklisted(chat_id: int) -> bool:
+    """Cek apakah chat ada di blacklist."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM blacklist WHERE chat_id = ?", (chat_id,)
+    ).fetchone()
+    return row is not None
+
+
+def list_blacklist() -> list[dict]:
+    """Kembalikan daftar blacklist sebagai list of dict {'chat_id', 'chat_title', 'created_at'}."""
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT chat_id, chat_title, created_at FROM blacklist ORDER BY created_at DESC"
+    ).fetchall()
+    return [dict(row) for row in rows]
