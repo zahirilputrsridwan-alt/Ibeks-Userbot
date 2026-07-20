@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import pyrogram
-from pyrogram import Client
+from pyrogram import Client, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
 from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION
@@ -70,7 +70,7 @@ def main() -> None:
         owner = me.first_name or me.username or "Unknown"
         log.info(f"[Main] ✅ Terhubung sebagai {owner} (@{me.username or 'n/a'}) | ID {me.id}")
 
-        client.idle()
+        idle()
     except ApiIdInvalid:
         log.critical("[Main] API_ID atau API_HASH tidak valid. Periksa Replit Secrets.")
         sys.exit(1)
