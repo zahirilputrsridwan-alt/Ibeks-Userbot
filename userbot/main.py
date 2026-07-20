@@ -9,8 +9,9 @@ import os
 # Tambahkan direktori userbot ke sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import pyrogram
 from pyrogram import Client
-from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered
+from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
 from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION
 from db import init_db
@@ -76,7 +77,7 @@ def main() -> None:
     except AuthKeyUnregistered:
         log.critical("[Main] STRING_SESSION tidak valid atau sudah kedaluwarsa.")
         sys.exit(1)
-    except pyrogram.errors.SessionRevoked:
+    except SessionRevoked:
         log.critical("[Main] STRING_SESSION telah dicabut oleh Telegram. Generate ulang dengan: cd userbot && python generate_session.py")
         sys.exit(1)
     except KeyboardInterrupt:
