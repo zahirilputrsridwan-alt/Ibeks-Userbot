@@ -4,6 +4,7 @@ Menangkap error dari handler plugin, mencatatnya ke log file,
 dan mencegah bot crash akibat error plugin.
 """
 
+import asyncio
 import functools
 import traceback
 from typing import Callable
@@ -17,20 +18,36 @@ from utils.logger import log
 HandlerType = Callable[[Client, Message], object]
 
 
+def _handle_task_error(task) -> None:
+    """Callback untuk menangkap error dari async task handler."""
+    try:
+        task.result()
+    except Exception as exc:
+        name = getattr(task, "__handler_name__", "unknown")
+        tb = traceback.format_exc()
+        log.exception(f"[ErrorHandler] Error di handler '{name}': {exc}\n{tb}")
+
+
 def wrap_handler(handler: HandlerType) -> HandlerType:
     """
     Bungkus handler Pyrogram agar error ditangkap dan dicatat.
     Error tidak akan diteruskan ke atas sehingga bot tetap berjalan.
+
+    Wrapper ini bersifat synchronous sehingga kompatibel dengan mekanisme
+    dispatcher Pyrogram 2.x, dan menjalankan handler async di dalam task.
     """
     @functools.wraps(handler)
-    async def wrapper(client: Client, message: Message):
+    def wrapper(client: Client, message: Message):
         try:
-            return await handler(client, message)
-        except Exception as exc:
-            name = getattr(handler, "__name__", "unknown")
-            tb = traceback.format_exc()
-            log.exception(f"[ErrorHandler] Error di handler '{name}': {exc}\n{tb}")
-            # Diam-diam tolak error agar Pyrogram tidak menyerahkannya
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            log.error(f"[ErrorHandler] Tidak ada event loop saat menjalankan {handler.__name__}")
+            return
+
+        task = loop.create_task(handler(client, message))
+        task.__handler_name__ = getattr(handler, "__name__", "unknown")
+        task.add_done_callback(_handle_task_error)
+
     return wrapper
 
 
