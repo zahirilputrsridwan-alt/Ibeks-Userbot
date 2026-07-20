@@ -60,10 +60,16 @@ def main() -> None:
     total = load_plugins(client)
     log.info(f"[Main] {total} plugin siap.")
 
-    # ── Jalankan client ───────────────────────────────────────────────────────
+    # ── Jalankan client dengan start/idle agar bisa log status ───────────────────
     try:
-        log.info(f"[Main] Menghubungkan ke Telegram...")
-        client.run()
+        log.info("[Main] Menghubungkan ke Telegram...")
+        client.start()
+
+        me = client.get_me()
+        owner = me.first_name or me.username or "Unknown"
+        log.info(f"[Main] ✅ Terhubung sebagai {owner} (@{me.username or 'n/a'}) | ID {me.id}")
+
+        client.idle()
     except ApiIdInvalid:
         log.critical("[Main] API_ID atau API_HASH tidak valid. Periksa Replit Secrets.")
         sys.exit(1)
