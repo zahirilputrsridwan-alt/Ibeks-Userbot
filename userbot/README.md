@@ -18,17 +18,18 @@ Buka panel **Secrets** di Replit dan tambahkan tiga secrets berikut:
 
 ### 2. Generate STRING_SESSION
 
-Jalankan skrip ini secara lokal atau di terminal Replit:
+> ⚠️ **Disarankan generate langsung di Replit**, bukan dari komputer lokal. Telegram sering mencabut session yang login dari IP/data center yang berbeda.
+
+Jalankan skrip generator di terminal Replit:
 
 ```bash
-python -c "
-from pyrogram import Client
-with Client(':memory:', input('API_ID: '), input('API_HASH: ')) as c:
-    print(c.export_session_string())
-"
+cd userbot
+python generate_session.py
 ```
 
 Masukkan nomor telepon & kode OTP saat diminta, lalu salin string yang dihasilkan ke secret `STRING_SESSION`.
+
+> Setelah generate berhasil, file session sementara dihapus otomatis. Simpan hanya STRING_SESSION-nya di Replit Secrets.
 
 ### 3. Jalankan Bot
 

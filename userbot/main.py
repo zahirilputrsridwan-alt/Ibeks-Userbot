@@ -76,6 +76,9 @@ def main() -> None:
     except AuthKeyUnregistered:
         log.critical("[Main] STRING_SESSION tidak valid atau sudah kedaluwarsa.")
         sys.exit(1)
+    except pyrogram.errors.SessionRevoked:
+        log.critical("[Main] STRING_SESSION telah dicabut oleh Telegram. Generate ulang dengan: cd userbot && python generate_session.py")
+        sys.exit(1)
     except KeyboardInterrupt:
         log.info("[Main] Bot dihentikan oleh pengguna.")
     except Exception as exc:
