@@ -1,0 +1,47 @@
+"""
+IBEKS USERBOT - Plugin: Card
+Command: .cardp (ID Card Pria), .cardw (ID Card Wanita)
+Membuat kartu identitas futuristik untuk diri sendiri atau user yang di-reply.
+"""
+
+import asyncio
+import logging
+
+from pyrogram import filters
+
+from config import AUTO_DELETE_CMD
+from utils.autodelete import auto_delete
+from utils.filters import dynamic_command
+from utils.id_card_generator import generate_user_card
+
+
+def setup(client):
+    """Daftarkan handler .cardp dan .cardw."""
+
+    async def _send_card(client, message, card_type, caption):
+        """Helper untuk generate dan kirim kartu ID."""
+        target = message.reply_to_message.from_user if message.reply_to_message else message.from_user
+        chat_id = message.chat.id
+
+        try:
+            card_buffer = await generate_user_card(client, target, card_type=card_type)
+            card_buffer.name = f"ibeks_card_{card_type}_{target.id}.png"
+            await client.send_document(
+                chat_id=chat_id,
+                document=card_buffer,
+                caption=f"{caption}\n👤 {target.first_name or 'User'}",
+                force_document=True,
+            )
+        except Exception as exc:
+            logging.exception("[Card] Gagal generate card: %s", exc)
+            await client.send_message(chat_id, f"❌ Gagal generate card: {exc}")
+
+    @client.on_message(dynamic_command("cardp") & filters.me)
+    async def cmd_cardp(client, message):
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        await _send_card(client, message, "male", "🧔 ID Card Pria — IBEKS USERBOT")
+
+    @client.on_message(dynamic_command("cardw") & filters.me)
+    async def cmd_cardw(client, message):
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        await _send_card(client, message, "female", "💃 ID Card Wanita — IBEKS USERBOT")
