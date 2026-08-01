@@ -10,8 +10,8 @@ from pyrogram import filters
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
-from utils.formatter import format_status
 from utils.voice_manager import voice_manager
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -23,7 +23,7 @@ def setup(client):
         chat_id = message.chat.id
 
         success, text = await voice_manager.join(chat_id)
-        result = await client.send_message(chat_id, text)
+        result = await send_ui(client, chat_id, text, "VOICE", "VOICE", "INFO", expandable=True)
 
         # Hapus command dan hasilnya setelah jeda
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))

@@ -16,6 +16,7 @@ from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.logger import log
 from plugins.fun.clone import BACKUP_METADATA_PATH, BACKUP_PHOTO_PATH
+from plugins.utils.ui import send_ui
 
 
 def _telegram_error(exc: Exception) -> str:
@@ -25,7 +26,7 @@ def _telegram_error(exc: Exception) -> str:
 
 async def _notify(client, chat_id: int, text: str) -> None:
     try:
-        await client.send_message(chat_id, text)
+        await send_ui(client, chat_id, text, "RESTORE", "FUN", "INFO", expandable=True)
     except Exception as exc:
         log.exception("[Restore] Gagal mengirim status ke chat %s: %s", chat_id, exc)
 
@@ -65,7 +66,7 @@ def setup(client):
         chat_id = message.chat.id
         backup = _load_backup()
         if backup is None:
-            await _notify(client, chat_id, "❌ Backup profil tidak ditemukan.")
+            await _notify(client, chat_id, "Backup profil tidak ditemukan.")
             return
 
         errors = []
@@ -99,10 +100,6 @@ def setup(client):
             log.exception("[Restore] Gagal memulihkan foto backup: %s", exc)
 
         if errors:
-            await _notify(
-                client,
-                chat_id,
-                f"⚠️ Profil dipulihkan sebagian. Alasan: {'; '.join(errors)}.",
-            )
+            await _notify(client, chat_id, f"Profil dipulihkan sebagian. Alasan: {'; '.join(errors)}.")
             return
-        await _notify(client, chat_id, "✅ Profil asli berhasil dipulihkan.")
+        await _notify(client, chat_id, "Profil asli berhasil dipulihkan.")

@@ -19,6 +19,7 @@ from pyrogram.types import User
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 _CTITIT_LEVELS = (
@@ -182,7 +183,7 @@ def setup(client):
 
     async def _get_reply_target(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await client.send_message(message.chat.id, "😡 REPLY DULU NYET...")
+            await send_ui(client, message.chat.id, "REPLY DULU NYET...", "STAGE 8", "FUN", "ERROR", expandable=True)
             return None
         return message.reply_to_message.from_user
 
@@ -191,11 +192,27 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _get_reply_target(message)
         if target:
-            await client.send_message(message.chat.id, _ctitit_report(target))
+            await send_ui(
+                client,
+                message.chat.id,
+                _ctitit_report(target),
+                "CEK TITIT",
+                "FUN",
+                "INFO",
+                expandable=True,
+            )
 
     @client.on_message(dynamic_command("cmeki") & filters.me)
     async def cmd_cmeki(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _get_reply_target(message)
         if target:
-            await client.send_message(message.chat.id, _cmeki_report(target))
+            await send_ui(
+                client,
+                message.chat.id,
+                _cmeki_report(target),
+                "CEK MEMEK",
+                "FUN",
+                "INFO",
+                expandable=True,
+            )

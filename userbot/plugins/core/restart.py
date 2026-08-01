@@ -13,6 +13,7 @@ from pyrogram import filters
 from config import AUTO_DELETE_CMD, MAIN_FILE, RESTART_STATE_FILE
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -32,7 +33,15 @@ def setup(client):
             from utils.logger import log
             log.warning(f"[Restart] Gagal menyimpan state restart: {exc}")
 
-        await client.send_message(chat_id, "🔄 Userbot sedang direstart...")
+        await send_ui(
+            client,
+            chat_id,
+            "Userbot sedang direstart...",
+            "RESTART",
+            "CORE",
+            "LOADING",
+            expandable=True,
+        )
 
         # Ganti proses saat ini dengan instance baru dari main.py
         try:
@@ -40,4 +49,4 @@ def setup(client):
         except Exception as exc:
             from utils.logger import log
             log.exception(f"[Restart] Gagal restart: {exc}")
-            await client.send_message(chat_id, "❌ Gagal merestart userbot.")
+            await send_ui(client, chat_id, "Gagal merestart userbot.", "RESTART", "CORE", "ERROR", expandable=True)

@@ -18,6 +18,7 @@ from pyrogram.types import User
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 _CNENEN_SIZE = (
@@ -167,7 +168,7 @@ def setup(client):
 
     async def _target_or_prompt(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await client.send_message(message.chat.id, "😡 REPLY DULU NYET...")
+            await send_ui(client, message.chat.id, "REPLY DULU NYET...", "STAGE 7", "FUN", "ERROR", expandable=True)
             return None
         return message.reply_to_message.from_user
 
@@ -176,11 +177,27 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _target_or_prompt(message)
         if target:
-            await client.send_message(message.chat.id, _report_cnenen(target))
+            await send_ui(
+                client,
+                message.chat.id,
+                _report_cnenen(target),
+                "CEK NENEN",
+                "FUN",
+                "INFO",
+                expandable=True,
+            )
 
     @client.on_message(dynamic_command("cange") & filters.me)
     async def cmd_cange(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _target_or_prompt(message)
         if target:
-            await client.send_message(message.chat.id, _report_cange(target))
+            await send_ui(
+                client,
+                message.chat.id,
+                _report_cange(target),
+                "CEK SANGE",
+                "FUN",
+                "INFO",
+                expandable=True,
+            )

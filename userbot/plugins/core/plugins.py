@@ -12,6 +12,7 @@ from config import AUTO_DELETE_CMD, BOT_NAME
 from loader import get_plugin_stats, plugin_category
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def _category_counts(plugin_stats: dict) -> dict[str, int]:
@@ -32,27 +33,10 @@ def _category_counts(plugin_stats: dict) -> dict[str, int]:
 def _format_plugin_status() -> str:
     stats = get_plugin_stats()
     counts = _category_counts(stats)
-    lines = [
-        f"📦 {BOT_NAME}",
-        "",
-        "━━━━━━━━━━━━━━━━━━━━",
-        "",
-        f"📊 Total Plugin : {len(stats['loaded'])}",
-        "",
-    ]
+    lines = [f"📦 {BOT_NAME}", "", f"📊 Total Plugin : {len(stats['loaded'])}", ""]
     for category, count in counts.items():
         lines.append(f"📂 {category} : {count}")
-
-    lines.extend(
-        [
-            "",
-            "━━━━━━━━━━━━━━━━━━━━",
-            "",
-            "Version : 1.0",
-            "",
-            "━━━━━━━━━━━━━━━━━━━━",
-        ]
-    )
+    lines.extend(["", "Version : 1.0"])
     return "\n".join(lines)
 
 
@@ -63,7 +47,7 @@ def setup(client):
     async def cmd_plugins(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         try:
-            await client.send_message(message.chat.id, _format_plugin_status())
+            await send_ui(client, message.chat.id, _format_plugin_status(), "PLUGIN STATUS", "CORE", "INFO", expandable=True)
         except Exception:
             from utils.logger import log
 

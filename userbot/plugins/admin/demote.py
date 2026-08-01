@@ -19,6 +19,7 @@ from utils.admin_helper import (
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.logger import log
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -28,24 +29,21 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await client.send_message(chat.id, "❌ Perintah ini hanya bisa digunakan di grup.")
+            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_promote_members")
         if not ok:
-            await client.send_message(chat.id, err)
+            await send_ui(client, chat.id, err, "DEMOTE", "ADMIN", "ERROR", expandable=True)
             return
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await client.send_message(
-                chat.id,
-                "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.",
-            )
+            await send_ui(client, chat.id, "Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
             return
 
         if await is_self_target_async(client, target_id):
-            await client.send_message(chat.id, "❌ Tidak bisa demote diri sendiri.")
+            await send_ui(client, chat.id, "Tidak bisa demote diri sendiri.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
             return
 
         privileges = ChatPrivileges(
@@ -64,7 +62,7 @@ def setup(client):
 
         try:
             await client.promote_chat_member(chat.id, target_id, privileges=privileges)
-            await client.send_message(chat.id, "✅ Admin berhasil didemote.")
+            await send_ui(client, chat.id, "Admin berhasil didemote.", "DEMOTE", "ADMIN", "SUCCESS", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Demote] Gagal demote user {target_id}: {exc}")
-            await client.send_message(chat.id, admin_error_message(exc))
+            await send_ui(client, chat.id, admin_error_message(exc), "DEMOTE", "ADMIN", "ERROR", expandable=True)

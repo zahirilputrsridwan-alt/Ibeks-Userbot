@@ -17,6 +17,7 @@ from utils.admin_helper import (
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.logger import log
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -26,31 +27,28 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await client.send_message(chat.id, "❌ Perintah ini hanya bisa digunakan di grup.")
+            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "PURGE", "ADMIN", "ERROR", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_delete_messages")
         if not ok:
-            await client.send_message(chat.id, err)
+            await send_ui(client, chat.id, err, "PURGE", "ADMIN", "ERROR", expandable=True)
             return
 
         if not message.reply_to_message:
-            await client.send_message(chat.id, "❌ Reply ke pesan paling awal yang ingin dihapus.")
+            await send_ui(client, chat.id, "Reply ke pesan paling awal yang ingin dihapus.", "PURGE", "ADMIN", "ERROR", expandable=True)
             return
 
         start_id = message.reply_to_message.id
         end_id = message.id
         if start_id > end_id:
-            await client.send_message(chat.id, "❌ Rentang pesan tidak valid.")
+            await send_ui(client, chat.id, "Rentang pesan tidak valid.", "PURGE", "ADMIN", "ERROR", expandable=True)
             return
 
         try:
             message_ids = list(range(start_id, end_id + 1))
             await client.delete_messages(chat.id, message_ids)
-            await client.send_message(
-                chat.id,
-                f"✅ Berhasil menghapus {len(message_ids)} pesan.",
-            )
+            await send_ui(client, chat.id, f"Berhasil menghapus {len(message_ids)} pesan.", "PURGE", "ADMIN", "SUCCESS", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Purge] Gagal purge pesan: {exc}")
-            await client.send_message(chat.id, admin_error_message(exc))
+            await send_ui(client, chat.id, admin_error_message(exc), "PURGE", "ADMIN", "ERROR", expandable=True)

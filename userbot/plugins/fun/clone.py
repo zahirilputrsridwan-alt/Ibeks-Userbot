@@ -17,6 +17,7 @@ from config import AUTO_DELETE_CMD, BASE_DIR
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.logger import log
+from plugins.utils.ui import send_ui
 
 
 BACKUP_METADATA_PATH = os.path.join(BASE_DIR, ".clone_profile_backup.json")
@@ -125,7 +126,7 @@ def _telegram_error(exc: Exception) -> str:
 async def _notify(client, chat_id: int, text: str) -> None:
     """Kirim status tanpa membiarkan error jaringan mematikan handler."""
     try:
-        await client.send_message(chat_id, text)
+        await send_ui(client, chat_id, text, "CLONE", "FUN", "INFO", expandable=True)
     except Exception as exc:
         log.exception("[Clone] Gagal mengirim status ke chat %s: %s", chat_id, exc)
 

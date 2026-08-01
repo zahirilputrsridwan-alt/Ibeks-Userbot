@@ -19,6 +19,7 @@ from utils.autodelete import auto_delete
 from utils.helper import get_ram_usage, get_cpu_usage
 from utils.uptime import format_uptime
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -34,7 +35,15 @@ def setup(client):
 
         # Ukur ping lokal (waktu kirim pesan "loading")
         t_start = time.monotonic()
-        sent = await client.send_message(chat_id, "🏓 Mengukur ping...")
+        sent = await send_ui(
+            client,
+            chat_id,
+            "Mengukur ping...",
+            "PING",
+            "CORE",
+            "LOADING",
+            expandable=True,
+        )
         ping_ms = round((time.monotonic() - t_start) * 1000, 2)
 
         # Ukur API ping via get_me()
@@ -50,24 +59,28 @@ def setup(client):
         cpu = get_cpu_usage()
         uptime = format_uptime()
 
-        text = (
-            "╭━━━━━━━━━━━━━━━━━━━━━━╮\n"
-            "        💀 INFO STATUS\n"
-            "╰━━━━━━━━━━━━━━━━━━━━━━╯\n"
-            "\n"
-            f"🏓 **Ping**      : `{ping_ms} ms`\n"
-            f"⚡ **API Ping**  : `{api_ping_ms} ms`\n"
-            f"⏰ **Uptime**    : `{uptime}`\n"
-            f"💾 **RAM**       : `{ram}%`\n"
-            f"🖥 **CPU**       : `{cpu}%`\n"
-            "\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "\n"
-            f"👤 **Owner**     : `{owner}`\n"
-            f"🤖 **{BOT_NAME}**\n"
-            f"📦 **Version**   : `{VERSION}`\n"
-            "\n"
-            "╰━━━━━━━━━━━━━━━━━━━━━━╯"
+        body = "\n".join(
+            [
+                f"🏓 Ping : `{ping_ms} ms`",
+                f"⚡ API Ping : `{api_ping_ms} ms`",
+                f"⏰ Uptime : `{uptime}`",
+                f"💾 RAM : `{ram}%`",
+                f"🖥 CPU : `{cpu}%`",
+                "",
+                f"👤 Owner : `{owner}`",
+                f"🤖 {BOT_NAME}",
+                f"📦 Version : `{VERSION}`",
+            ]
         )
-
-        await sent.edit(text)
+        try:
+            await sent.edit_text(
+                "🔄 PING\n\nMengukur hasil akhir...",
+                parse_mode=None,
+            )
+        except Exception:
+            pass
+        try:
+            await sent.delete()
+        except Exception:
+            pass
+        await send_ui(client, message.chat.id, body, "INFO STATUS", "CORE", "INFO", expandable=True)

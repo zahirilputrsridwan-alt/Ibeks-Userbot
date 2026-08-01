@@ -12,6 +12,7 @@ from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.formatter import format_me_info
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -23,8 +24,4 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
         me = await client.get_me()
-        await client.send_message(
-            message.chat.id,
-            format_me_info(me),
-            disable_web_page_preview=True,
-        )
+        await send_ui(client, message.chat.id, format_me_info(me), "INFO AKUN", "CORE", "INFO", expandable=True)

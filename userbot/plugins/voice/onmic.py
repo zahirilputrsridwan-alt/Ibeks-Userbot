@@ -11,6 +11,7 @@ from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.voice_manager import voice_manager
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -23,4 +24,4 @@ def setup(client):
         chat_id = message.chat.id
 
         success, text = await voice_manager.set_mute(chat_id, muted=False)
-        await client.send_message(chat_id, text)
+        await send_ui(client, chat_id, text, "VOICE", "VOICE", "INFO", expandable=True)

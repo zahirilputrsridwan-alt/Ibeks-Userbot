@@ -17,6 +17,7 @@ from pyrogram import filters
 from config import BOT_NAME, VERSION, AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -33,13 +34,15 @@ def setup(client):
         python_ver = sys.version.split()[0]
         pyrogram_ver = pyrogram.__version__
 
-        text = (
-            f"🟢 **{BOT_NAME}**\n\n"
-            f"**Status**   : `Online`\n"
-            f"**Version**  : `{VERSION}`\n"
-            f"**Python**   : `{python_ver}`\n"
-            f"**Pyrogram** : `{pyrogram_ver}`\n"
-            f"**Owner**    : `{owner}`"
+        body = "\n".join(
+            [
+                f"🟢 {BOT_NAME}",
+                "",
+                f"Status : `Online`",
+                f"Version : `{VERSION}`",
+                f"Python : `{python_ver}`",
+                f"Pyrogram : `{pyrogram_ver}`",
+                f"Owner : `{owner}`",
+            ]
         )
-
-        await client.send_message(message.chat.id, text)
+        await send_ui(client, message.chat.id, body, "ALIVE", "CORE", "SUCCESS", expandable=True)

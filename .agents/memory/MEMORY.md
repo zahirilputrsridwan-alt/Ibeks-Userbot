@@ -2,3 +2,4 @@
 - [Telegram edit animation behavior](telegram-edit-animation.md) — skip duplicate first-frame edits and keep persistent results separate from command auto-delete.
 - [Fun card visual style](fun-card-visual-style.md) — keep .cardp/.cardw as 1280×720 neon ID cards with large circular photo and reference-style footer.
 - [Clone profile backup](clone-profile-backup.md) — save the latest original profile before clone and restore no-photo profiles by removing the current photo.
+- [IBEKS UI system](ibeks-ui-system.md) — route text-only output through the shared expandable-blockquote fallback; keep media and animation handlers separate.
