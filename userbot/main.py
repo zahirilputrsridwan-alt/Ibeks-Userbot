@@ -15,7 +15,7 @@ from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
 from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX, MAIN_FILE, RESTART_STATE_FILE
 from db import init_db
-from loader import load_plugins
+from loader import load_plugins, plugin_filename
 from utils.logger import log
 from utils.prefix_manager import set_owner_id, get_prefix
 from utils.error_handler import install_global_error_handler
@@ -61,18 +61,36 @@ def _clear_restart_state() -> None:
 
 
 def log_startup_info(client, me, plugin_stats) -> None:
-    """Tampilkan informasi debug saat startup."""
+    """Tampilkan login, daftar plugin, dan total plugin saat startup."""
     owner = me.first_name or me.username or "Unknown"
     log.info("✓ Login berhasil")
     log.info("✓ Userbot aktif")
     log.info(f"Nama akun Telegram : {owner}")
     log.info(f"User ID            : {me.id}")
     log.info(f"Prefix             : {get_prefix()}")
-    log.info(f"Jumlah plugin      : {len(plugin_stats['loaded'])} dimuat, {len(plugin_stats['failed'])} gagal")
-    if plugin_stats['loaded']:
-        log.info(f"Plugins aktif      : {', '.join(plugin_stats['loaded'])}")
-    if plugin_stats['failed']:
-        log.warning(f"Plugins gagal      : {', '.join(plugin_stats['failed'])}")
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━",
+        f"🤖 {BOT_NAME}",
+        "",
+        "📦 Plugin Loaded",
+        "",
+    ]
+    lines.extend(f"✅ {plugin_filename(module)}" for module in plugin_stats["loaded"])
+    for failure in plugin_stats.get("failed_details", []):
+        lines.append(f"❌ {failure['filename']}")
+        lines.append(f"   {failure['error_type']}: {failure['reason']}")
+    lines.extend(
+        [
+            "",
+            "━━━━━━━━━━━━━━━━━━━━",
+            "",
+            f"📊 Total Plugin : {len(plugin_stats['loaded'])}",
+            "",
+            "━━━━━━━━━━━━━━━━━━━━",
+        ]
+    )
+    log.info("\n".join(lines))
 
 
 def main() -> None:
