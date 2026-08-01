@@ -19,11 +19,13 @@ VERSION: str = "1.0.0"
 CMD_PREFIX: str = "."  # Default fallback; prefix aktif dibaca dari database
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
-PLUGINS_DIR: str = os.path.join(BASE_DIR, "plugins")
+SOURCE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+# Manager Bot memberi setiap akun direktori runtime terpisah.
+BASE_DIR: str = os.environ.get("USERBOT_RUNTIME_DIR", SOURCE_DIR)
+PLUGINS_DIR: str = os.path.join(SOURCE_DIR, "plugins")
 DATABASE_PATH: str = os.path.join(BASE_DIR, "database.db")
 LOGS_DIR: str = os.path.join(BASE_DIR, "logs")
-MAIN_FILE: str = os.path.join(BASE_DIR, "main.py")
+MAIN_FILE: str = os.path.join(SOURCE_DIR, "main.py")
 
 # ── Restart state ─────────────────────────────────────────────────────────────
 RESTART_STATE_FILE: str = os.path.join(BASE_DIR, ".restart_state")

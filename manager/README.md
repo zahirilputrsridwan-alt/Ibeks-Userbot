@@ -41,3 +41,20 @@ Saat mulai, database SQLite dan tabel `users` dibuat otomatis. Plugin pada
 
 Sesi login sementara memiliki batas waktu dan dibersihkan setelah proses
 selesai, gagal, dibatalkan, atau timeout.
+
+## Engine Userbot
+
+Setelah login berhasil, Manager Bot menyiapkan proses IBEKS USERBOT milik
+pengguna secara otomatis. Setiap pengguna memiliki proses, direktori runtime,
+database, log, dan backup plugin yang terisolasi.
+
+Kontrol tersedia dari menu `👤 Akun Saya`:
+
+- `▶ Start Userbot`
+- `⏹ Stop Userbot`
+- `🔄 Restart Userbot`
+- `📊 Status Userbot`
+
+Status lifecycle disimpan di SQLite. `STRING_SESSION` dikirim ke proses child
+melalui environment internal dan tidak pernah dicetak ke command line, pesan,
+atau log Manager Bot.

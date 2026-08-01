@@ -26,9 +26,11 @@ from pyrogram.types import (
 
 from config import API_HASH, API_ID, LOGIN_TIMEOUT_SECONDS
 from database import get_or_create_user, save_login
+from engine import start_userbot, stop_userbot
 from formatter import full_name
 from logger import log, safe_handler
 from plugins.start.start import home_keyboard
+from plugins.terminal.userbot import account_keyboard
 
 _PHONE_RE = re.compile(r"^\+[1-9]\d{7,14}$")
 _OTP_RE = re.compile(r"^\d{5,6}$")
@@ -199,6 +201,9 @@ async def _handle_phone(client, message, state: LoginState) -> None:
 
 async def _finish_login(message, state: LoginState, logged_user) -> None:
     session_string = await state.client.export_session_string()
+    if not hasattr(logged_user, "id"):
+        logged_user = await state.client.get_me()
+    await stop_userbot(message.from_user.id)
     save_login(
         telegram_id=message.from_user.id,
         phone_number=state.phone_number or "",
@@ -209,10 +214,17 @@ async def _finish_login(message, state: LoginState, logged_user) -> None:
         ) or logged_user.username or "Pengguna Telegram",
     )
     await _remove_state(message.from_user.id)
+    started, start_result = await start_userbot(message.from_user.id)
+    if started:
+        result = "✅ Login Telegram berhasil.\n\n🟢 Userbot berhasil online."
+    else:
+        result = (
+            "✅ Login Telegram berhasil.\n\n"
+            f"🟡 Userbot belum online: {start_result}"
+        )
     await message.reply(
-        "✅ Login Telegram berhasil.\n\n"
-        "Akun Anda sekarang berstatus 🟢 Aktif.",
-        reply_markup=home_keyboard(),
+        result,
+        reply_markup=account_keyboard(),
     )
 
 

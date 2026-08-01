@@ -33,8 +33,18 @@ def account_text(user_data: dict) -> str:
         f"• Username : {display_username(user_data.get('username'))}\n"
         f"• Telegram ID : `{user_data.get('telegram_id')}`\n"
         f"• Nomor : {user_data.get('phone_number') or 'Belum tersedia'}\n"
-        f"• Status : {status_line}\n"
+        f"• Status Login : {status_line}\n"
+        f"• Status Userbot : {user_data.get('userbot_status') or '🔴 Offline'}\n"
         f"• Tanggal Login : {display_date(user_data.get('login_at'))}"
+    )
+
+
+def userbot_status_text(user_data: dict) -> str:
+    return (
+        "📊 **Status Userbot**\n\n"
+        f"Status : {user_data.get('userbot_status') or '🔴 Offline'}\n"
+        f"Waktu Start : {display_date(user_data.get('last_start'))}\n"
+        f"Waktu Restart Terakhir : {display_date(user_data.get('last_restart'))}"
     )
 
 

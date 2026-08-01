@@ -33,6 +33,10 @@ def init_db() -> None:
                 phone_number TEXT,
                 session_string TEXT,
                 login_at TEXT,
+                userbot_status TEXT NOT NULL DEFAULT '🔴 Offline',
+                last_start TEXT,
+                last_stop TEXT,
+                last_restart TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
@@ -46,6 +50,10 @@ def init_db() -> None:
             "phone_number": "TEXT",
             "session_string": "TEXT",
             "login_at": "TEXT",
+            "userbot_status": "TEXT NOT NULL DEFAULT '🔴 Offline'",
+            "last_start": "TEXT",
+            "last_stop": "TEXT",
+            "last_restart": "TEXT",
         }.items():
             if column not in columns:
                 connection.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
@@ -57,7 +65,8 @@ def get_user(telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, login_at, created_at, updated_at "
+            "session_string, login_at, userbot_status, last_start, last_stop, "
+            "last_restart, created_at, updated_at "
             "FROM users WHERE telegram_id = ?",
             (telegram_id,),
         ).fetchone()
@@ -114,6 +123,7 @@ def save_login(
                 session_string = ?,
                 login_at = ?,
                 status = 'Aktif',
+                userbot_status = '🟡 Starting',
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -126,5 +136,33 @@ def save_login(
                 timestamp,
                 telegram_id,
             ),
+        )
+        connection.commit()
+
+
+def update_userbot_state(
+    telegram_id: int,
+    status: str,
+    *,
+    last_start: str | None = None,
+    last_stop: str | None = None,
+    last_restart: str | None = None,
+) -> None:
+    """Simpan status dan timestamp lifecycle Userbot."""
+    fields = ["userbot_status = ?", "updated_at = ?"]
+    values: list[str | int | None] = [status, _now()]
+    for column, value in (
+        ("last_start", last_start),
+        ("last_stop", last_stop),
+        ("last_restart", last_restart),
+    ):
+        if value is not None:
+            fields.append(f"{column} = ?")
+            values.append(value)
+    values.append(telegram_id)
+    with _connect() as connection:
+        connection.execute(
+            f"UPDATE users SET {', '.join(fields)} WHERE telegram_id = ?",
+            values,
         )
         connection.commit()

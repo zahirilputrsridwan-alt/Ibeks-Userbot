@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 
 import pyrogram
@@ -9,6 +10,7 @@ from pyrogram import Client, idle
 
 from config import API_HASH, API_ID, BOT_NAME, BOT_TOKEN, VERSION
 from database import init_db
+from engine import stop_all_userbots
 from loader import load_plugins
 from logger import install_global_error_handler, log
 
@@ -48,6 +50,7 @@ def main() -> None:
         idle()
     finally:
         client.stop()
+        asyncio.run(stop_all_userbots())
 
 
 if __name__ == "__main__":
