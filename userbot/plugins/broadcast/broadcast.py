@@ -9,6 +9,7 @@ Commands:
 """
 
 import asyncio
+import time
 
 from pyrogram import filters
 
@@ -21,65 +22,102 @@ from utils.broadcast import broadcast_gcast, broadcast_ucast, format_broadcast_r
 from plugins.utils.ui import send_ui
 
 
+_RECENT_COMMANDS: dict[tuple[int, str], float] = {}
+_COMMAND_DEDUPE_SECONDS = 30.0
+_ACTIVE_BROADCASTS: set[int] = set()
+
+
+def _is_duplicate_command(message) -> bool:
+    """Abaikan update Telegram yang sama bila diterima ulang."""
+    text = (message.text or message.caption or "").strip()
+    reply_id = getattr(message.reply_to_message, "id", 0) or 0
+    key = (int(message.chat.id), f"{reply_id}:{text}")
+    now = time.monotonic()
+    expired = [item for item, seen_at in _RECENT_COMMANDS.items()
+               if now - seen_at > _COMMAND_DEDUPE_SECONDS]
+    for item in expired:
+        _RECENT_COMMANDS.pop(item, None)
+    if key in _RECENT_COMMANDS:
+        return True
+    _RECENT_COMMANDS[key] = now
+    return False
+
+
 def setup(client):
     """Daftarkan handler broadcast pada instance client."""
 
     @client.on_message(dynamic_command("gcast") & filters.me)
     async def cmd_gcast(client, message):
         """Handler command .gcast"""
+        if _is_duplicate_command(message):
+            return
+        chat_id = message.chat.id
+        if chat_id in _ACTIVE_BROADCASTS:
+            return
+        _ACTIVE_BROADCASTS.add(chat_id)
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
-        chat_id = message.chat.id
         reply = message.reply_to_message
 
         # Ambil konten: reply jika ada, atau teks setelah command
         text = None
-        if reply:
-            source = reply
-        else:
-            parts = (message.text or message.caption or "").split(maxsplit=1)
-            if len(parts) < 2:
-                await send_ui(
-                    client,
-                    chat_id,
-                    format_status(False, "Gunakan `.gcast <pesan>` atau reply pesan."),
-                    expandable=True,
-                )
-                return
-            text = parts[1]
-            source = None
+        try:
+            if reply:
+                source = reply
+            else:
+                parts = (message.text or message.caption or "").split(maxsplit=1)
+                if len(parts) < 2:
+                    await send_ui(
+                        client,
+                        chat_id,
+                        format_status(False, "Gunakan `.gcast <pesan>` atau reply pesan."),
+                        expandable=True,
+                    )
+                    return
+                text = parts[1]
+                source = None
 
-        await send_ui(client, chat_id, "🔄 GCAST sedang berjalan...", expandable=True)
-        result = await broadcast_gcast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("gcast", result), expandable=True)
+            await send_ui(client, chat_id, "🔄 GCAST sedang berjalan...", expandable=True)
+            result = await broadcast_gcast(client, text=text, source_message=source)
+            await send_ui(client, chat_id, format_broadcast_result("gcast", result), expandable=True)
+        finally:
+            _ACTIVE_BROADCASTS.discard(chat_id)
 
     @client.on_message(dynamic_command("ucast") & filters.me)
     async def cmd_ucast(client, message):
         """Handler command .ucast"""
+        if _is_duplicate_command(message):
+            return
+        chat_id = message.chat.id
+        if chat_id in _ACTIVE_BROADCASTS:
+            return
+        _ACTIVE_BROADCASTS.add(chat_id)
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
-        chat_id = message.chat.id
         reply = message.reply_to_message
 
         text = None
-        if reply:
-            source = reply
-        else:
-            parts = (message.text or message.caption or "").split(maxsplit=1)
-            if len(parts) < 2:
-                await send_ui(
-                    client,
-                    chat_id,
-                    format_status(False, "Gunakan `.ucast <pesan>` atau reply pesan."),
-                    expandable=True,
-                )
-                return
-            text = parts[1]
-            source = None
+        try:
+            if reply:
+                source = reply
+            else:
+                parts = (message.text or message.caption or "").split(maxsplit=1)
+                if len(parts) < 2:
+                    await send_ui(
+                        client,
+                        chat_id,
+                        format_status(False, "Gunakan `.ucast <pesan>` atau reply pesan."),
+                        expandable=True,
+                    )
+                    return
+                text = parts[1]
+                source = None
 
-        await send_ui(client, chat_id, "🔄 UCAST sedang berjalan...", expandable=True)
-        result = await broadcast_ucast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("ucast", result), expandable=True)
+            await send_ui(client, chat_id, "🔄 UCAST sedang berjalan...", expandable=True)
+            result = await broadcast_ucast(client, text=text, source_message=source)
+            await send_ui(client, chat_id, format_broadcast_result("ucast", result), expandable=True)
+        finally:
+            _ACTIVE_BROADCASTS.discard(chat_id)
 
     @client.on_message(dynamic_command("addbl") & filters.me)
     async def cmd_addbl(client, message):

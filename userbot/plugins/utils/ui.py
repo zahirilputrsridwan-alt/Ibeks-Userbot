@@ -77,15 +77,20 @@ async def send_ui(
                     length=len(parser_utils.add_surrogates(parsed_text)),
                 )
             )
-            return await client.send_message(
-                chat_id,
-                parsed_text,
-                parse_mode=None,
-                entities=entities,
-                **send_kwargs,
-            )
         except Exception as exc:
-            log.warning("[UI] Expandable blockquote gagal, kirim UI lama: %s", exc)
+            log.warning("[UI] Expandable blockquote gagal saat parsing, kirim UI lama: %s", exc)
+            return await client.send_message(chat_id, text, **send_kwargs)
+
+        # Jangan retry jika Telegram gagal setelah request dikirim. Retry dapat
+        # membuat satu output tampil dua kali bila pesan pertama sebenarnya sudah
+        # diterima server.
+        return await client.send_message(
+            chat_id,
+            parsed_text,
+            parse_mode=None,
+            entities=entities,
+            **send_kwargs,
+        )
 
     return await client.send_message(chat_id, text, **send_kwargs)
 

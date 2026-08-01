@@ -11,3 +11,4 @@
 - [Manager startup order](manager-startup-order.md) — login the Pyrogram client before registering plugins and message handlers.
 - [Manager handler priority](manager-handler-priority.md) — broad private-message handlers must run after explicit menu commands such as `/start`.
 - [Manager single instance](manager-single-instance.md) — only one Manager process and one Manager-owned Userbot child may consume each Telegram session.
+- [Broadcast deduplication](broadcast-deduplication.md) — protect both relay and Userbot broadcast execution, and check result templates for literal duplicate lines.

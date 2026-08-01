@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 
 from pyrogram import filters
 
@@ -13,6 +14,42 @@ from logger import log, safe_handler
 from membership import has_active_membership
 
 MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
+_RECENT_COMMANDS: dict[tuple[int, str], float] = {}
+_RECENT_RESPONSES: dict[tuple[int, int], float] = {}
+_RECENT_RESPONSE_BODIES: dict[tuple[int, str], float] = {}
+_DEDUPE_SECONDS = 30.0
+_RESPONSE_BODY_DEDUPE_SECONDS = 10.0
+
+
+def _is_duplicate(seen: dict, key) -> bool:
+    now = time.monotonic()
+    expired = [item for item, seen_at in seen.items()
+               if now - seen_at > _DEDUPE_SECONDS]
+    for item in expired:
+        seen.pop(item, None)
+    if key in seen:
+        return True
+    seen[key] = now
+    return False
+
+
+def _is_duplicate_response_body(userbot_id: int, message) -> bool:
+    """Abaikan salinan output dengan message ID baru tetapi isi sama."""
+    body = (message.text or message.caption or "").strip()
+    if not body:
+        return False
+    now = time.monotonic()
+    expired = [
+        item for item, seen_at in _RECENT_RESPONSE_BODIES.items()
+        if now - seen_at > _RESPONSE_BODY_DEDUPE_SECONDS
+    ]
+    for item in expired:
+        _RECENT_RESPONSE_BODIES.pop(item, None)
+    key = (userbot_id, body)
+    if key in _RECENT_RESPONSE_BODIES:
+        return True
+    _RECENT_RESPONSE_BODIES[key] = now
+    return False
 
 
 def _active_prefix(manager_user_id: int, userbot_id: int) -> str:
@@ -100,6 +137,20 @@ def setup(client):
     @safe_handler
     async def userbot_response_handler(client, message):
         """Salin semua tipe pesan output Userbot ke pengguna Manager."""
+        response_key = (int(message.from_user.id), int(message.id))
+        if _is_duplicate(_RECENT_RESPONSES, response_key):
+            log.warning(
+                "Output Userbot duplikat diabaikan: userbot=%s message=%s",
+                response_key[0],
+                response_key[1],
+            )
+            return
+        if _is_duplicate_response_body(response_key[0], message):
+            log.warning(
+                "Output Userbot dengan isi sama diabaikan: userbot=%s",
+                response_key[0],
+            )
+            return
         handshake = (message.text or message.caption or "").strip()
         if handshake.startswith(MANAGER_HANDSHAKE):
             try:
@@ -137,6 +188,16 @@ def setup(client):
     @safe_handler
     async def terminal_command_handler(client, message):
         """Teruskan command ber-prefix tanpa mengetahui daftar plugin."""
+        text = (message.text or message.caption or "").strip()
+        reply_id = getattr(message.reply_to_message, "id", 0) or 0
+        command_key = (int(message.chat.id), f"{reply_id}:{text}")
+        if _is_duplicate(_RECENT_COMMANDS, command_key):
+            log.warning(
+                "Command terminal duplikat diabaikan: chat=%s command=%s",
+                command_key[0],
+                command_key[1],
+            )
+            return
         user = get_user(message.from_user.id)
         if not user or not user.get("userbot_telegram_id"):
             return
