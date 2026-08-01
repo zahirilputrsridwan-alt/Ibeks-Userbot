@@ -5,6 +5,7 @@ Inisialisasi Pyrogram client, database, dan plugin loader.
 
 import sys
 import os
+import re
 
 # Tambahkan direktori userbot ke sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -20,6 +21,14 @@ from utils.logger import log
 from utils.prefix_manager import set_owner_id, get_prefix
 from utils.error_handler import install_global_error_handler
 from utils.voice_manager import voice_manager
+
+
+_TELEGRAM_BOT_TOKEN_RE = re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{30,}\b")
+
+
+def _redact_debug_text(text: str) -> str:
+    """Redaksi token Bot API sebelum pesan masuk ke log debug."""
+    return _TELEGRAM_BOT_TOKEN_RE.sub("[TELEGRAM_BOT_TOKEN_REDACTED]", text)
 
 
 def validate_config() -> None:
@@ -130,7 +139,7 @@ def main() -> None:
         try:
             chat_id = message.chat.id if message.chat else "n/a"
             from_id = message.from_user.id if message.from_user else "n/a"
-            text = message.text or message.caption or "[no text]"
+            text = _redact_debug_text(message.text or message.caption or "[no text]")
             log.info(f"[Debug] Incoming msg | chat={chat_id} from={from_id} text={text!r}")
         except Exception as exc:
             log.warning(f"[Debug] Gagal log pesan: {exc}")
