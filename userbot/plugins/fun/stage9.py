@@ -53,7 +53,7 @@ async def _animate(message) -> None:
     # Frame pertama sudah dikirim oleh caller. Mengedit ke teks identik akan
     # memicu MessageNotModified dari Telegram dan menghentikan animasi.
     for frame in _ANIMATION_FRAMES[1:]:
-        await asyncio.sleep(0.55)
+        await asyncio.sleep(1.0)
         await message.edit_text(frame)
 
 
@@ -74,7 +74,6 @@ def setup(client):
                 f"{result}\n\n"
                 "⨱ IBEKS UBOT ⨱"
             )
-            asyncio.create_task(auto_delete(result_message, delay=AUTO_DELETE_CMD))
         except Exception as exc:
             # Animasi tidak boleh membuat hasil akhir hilang jika Telegram
             # menolak salah satu edit (misalnya pesan dihapus lebih dulu).
@@ -87,6 +86,5 @@ def setup(client):
                     f"{result}\n\n"
                     "⨱ IBEKS UBOT ⨱"
                 )
-                asyncio.create_task(auto_delete(result_message, delay=AUTO_DELETE_CMD))
             except Exception as result_exc:
                 logging.exception("[Stage9] Gagal mengirim hasil .ckocok: %s", result_exc)
