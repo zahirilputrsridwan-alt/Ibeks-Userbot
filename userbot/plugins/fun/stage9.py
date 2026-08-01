@@ -9,6 +9,7 @@ sehingga tidak berubah-ubah setiap command dan tidak membutuhkan database.
 
 import asyncio
 import hashlib
+import logging
 from datetime import datetime, timezone
 
 from pyrogram import filters
@@ -49,9 +50,11 @@ def _result_for_user(user_id: int) -> str:
 
 async def _animate(message) -> None:
     """Tampilkan animasi secara berurutan pada pesan hasil yang sama."""
-    for frame in _ANIMATION_FRAMES:
-        await message.edit_text(frame)
+    # Frame pertama sudah dikirim oleh caller. Mengedit ke teks identik akan
+    # memicu MessageNotModified dari Telegram dan menghentikan animasi.
+    for frame in _ANIMATION_FRAMES[1:]:
         await asyncio.sleep(0.55)
+        await message.edit_text(frame)
 
 
 def setup(client):
@@ -72,6 +75,18 @@ def setup(client):
                 "⨱ IBEKS UBOT ⨱"
             )
             asyncio.create_task(auto_delete(result_message, delay=AUTO_DELETE_CMD))
-        except Exception:
-            # Jika pesan dihapus/berubah saat animasi berjalan, jangan ganggu client utama.
-            return
+        except Exception as exc:
+            # Animasi tidak boleh membuat hasil akhir hilang jika Telegram
+            # menolak salah satu edit (misalnya pesan dihapus lebih dulu).
+            logging.exception("[Stage9] Animasi .ckocok gagal: %s", exc)
+            try:
+                result = _result_for_user(message.from_user.id)
+                await result_message.edit_text(
+                    "💦 KOCOK — REPORT 💦\n"
+                    "━━━━━━ ★ ━━━━━━\n\n"
+                    f"{result}\n\n"
+                    "⨱ IBEKS UBOT ⨱"
+                )
+                asyncio.create_task(auto_delete(result_message, delay=AUTO_DELETE_CMD))
+            except Exception as result_exc:
+                logging.exception("[Stage9] Gagal mengirim hasil .ckocok: %s", result_exc)
