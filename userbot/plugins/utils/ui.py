@@ -65,66 +65,21 @@ async def send_ui(
     text = safe_text(body)
     send_kwargs = dict(kwargs)
 
-    if expandable and text:
-        try:
-            parsed = await Parser(None).parse(text)
-            parsed_text = parsed["message"]
-            entities = list(parsed.get("entities") or [])
-            entities.append(
-                _ExpandableBlockquote(
-                    collapsed=True,
-                    offset=0,
-                    length=len(parser_utils.add_surrogates(parsed_text)),
-                )
-            )
-        except Exception as exc:
-            log.warning("[UI] Expandable blockquote gagal saat parsing, kirim UI lama: %s", exc)
-            return await client.send_message(chat_id, text, **send_kwargs)
-
-        # Jangan retry jika Telegram gagal setelah request dikirim. Retry dapat
-        # membuat satu output tampil dua kali bila pesan pertama sebenarnya sudah
-        # diterima server.
-        return await client.send_message(
-            chat_id,
-            parsed_text,
-            parse_mode=None,
-            entities=entities,
-            **send_kwargs,
-        )
-
+    # Pyrogram 2.0.106 mencoba menambahkan ``_client`` ke setiap entity
+    # high-level yang diberikan secara manual. Entity expandable custom dan
+    # entity hasil Parser tidak menyediakan slot tersebut, sehingga request
+    # gagal sebelum dikirim dan seluruh plugin yang memakai send_ui() diam.
+    # Kirim teks melalui parser bawaan Pyrogram; isi pesan tetap dipertahankan.
     return await client.send_message(chat_id, text, **send_kwargs)
 
 
 async def edit_ui(client, message, body: str, reply_markup=None, **kwargs):
-    """Edit pesan dengan parser/entity UI yang sama seperti send_ui()."""
+    """Edit pesan dengan parser bawaan Pyrogram."""
     text = safe_text(body)
-    try:
-        parsed = await Parser(None).parse(text)
-        parsed_text = parsed["message"]
-        entities = list(parsed.get("entities") or [])
-        if parsed_text:
-            entities.append(
-                _ExpandableBlockquote(
-                    collapsed=True,
-                    offset=0,
-                    length=len(parser_utils.add_surrogates(parsed_text)),
-                )
-            )
-        return await client.edit_message_text(
-            message.chat.id,
-            message.id,
-            parsed_text,
-            parse_mode=None,
-            entities=entities,
-            reply_markup=reply_markup,
-            **kwargs,
-        )
-    except Exception as exc:
-        log.warning("[UI] Edit expandable blockquote gagal, edit UI lama: %s", exc)
-        return await client.edit_message_text(
-            message.chat.id,
-            message.id,
-            text,
-            reply_markup=reply_markup,
-            **kwargs,
-        )
+    return await client.edit_message_text(
+        message.chat.id,
+        message.id,
+        text,
+        reply_markup=reply_markup,
+        **kwargs,
+    )
