@@ -29,6 +29,7 @@ from database import get_or_create_user, save_login
 from engine import start_userbot, stop_userbot
 from formatter import full_name
 from logger import log, safe_handler
+from membership import ensure_login_membership
 from plugins.start.start import home_keyboard
 from plugins.terminal.userbot import account_keyboard
 
@@ -214,6 +215,7 @@ async def _finish_login(message, state: LoginState, logged_user) -> None:
             part for part in [logged_user.first_name, logged_user.last_name] if part
         ) or logged_user.username or "Pengguna Telegram",
     )
+    ensure_login_membership(message.from_user.id)
     await _remove_state(message.from_user.id)
     started, start_result = await start_userbot(message.from_user.id)
     if started:

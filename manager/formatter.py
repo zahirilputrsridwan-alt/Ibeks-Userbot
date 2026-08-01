@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from membership import membership_info
+
 
 def display_username(username: str | None) -> str:
     return f"@{username}" if username else "Tidak ada"
@@ -27,6 +29,7 @@ def full_name(user) -> str:
 def account_text(user_data: dict) -> str:
     status = user_data.get("status") or "Belum Aktif"
     status_line = "🟢 Aktif" if status == "Aktif" else "🔴 Belum Aktif"
+    membership = membership_info(user_data)
     return (
         "👤 **Akun Saya**\n\n"
         f"• Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
@@ -34,6 +37,9 @@ def account_text(user_data: dict) -> str:
         f"• Telegram ID : `{user_data.get('telegram_id')}`\n"
         f"• Nomor : {user_data.get('phone_number') or 'Belum tersedia'}\n"
         f"• Status Login : {status_line}\n"
+        f"• Status Membership : {membership['status']}\n"
+        f"• Tanggal Berakhir : {display_date(membership['expired_at'])}\n"
+        f"• Sisa Hari : {membership['days_remaining']}\n"
         f"• Status Userbot : {user_data.get('userbot_status') or '🔴 Offline'}\n"
         f"• Tanggal Login : {display_date(user_data.get('login_at'))}"
     )

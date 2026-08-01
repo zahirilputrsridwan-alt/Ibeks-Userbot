@@ -10,6 +10,7 @@ from config import USERBOT_RUNTIME_DIR
 from database import get_user, get_user_by_userbot_id
 from engine import is_running, mark_userbot_handshake
 from logger import log, safe_handler
+from membership import has_active_membership
 
 MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
 
@@ -136,6 +137,11 @@ def setup(client):
         """Teruskan command ber-prefix tanpa mengetahui daftar plugin."""
         user = get_user(message.from_user.id)
         if not user or not user.get("userbot_telegram_id"):
+            return
+        if not has_active_membership(user):
+            await message.reply(
+                "❌ Membership Anda telah berakhir. Silakan hubungi Admin."
+            )
             return
         if not is_running(message.from_user.id):
             await message.reply(

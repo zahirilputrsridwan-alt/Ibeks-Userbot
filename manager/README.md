@@ -75,3 +75,11 @@ Semua output pesan Userbot disalin kembali, termasuk teks, foto, video,
 animation, sticker, voice, audio, dan document. Command yang tidak tersedia
 menghasilkan error dari Userbot, sedangkan Userbot yang berhenti menampilkan
 instruksi untuk menyalakannya.
+
+## Membership
+
+Login Telegram pertama yang berhasil memberikan Membership selama 30 hari.
+Tanggal berakhir disimpan dalam UTC pada SQLite dan status `Active` atau
+`Expired` dihitung saat data dibaca. Command Terminal tidak diteruskan jika
+Membership sudah berakhir. Fungsi `extend_membership()` tersedia untuk plugin
+Admin pada tahap berikutnya.

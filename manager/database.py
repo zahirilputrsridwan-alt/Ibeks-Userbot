@@ -34,6 +34,7 @@ def init_db() -> None:
                 session_string TEXT,
                 userbot_telegram_id INTEGER,
                 login_at TEXT,
+                membership_expired_at TEXT,
                 userbot_status TEXT NOT NULL DEFAULT '🔴 Offline',
                 last_start TEXT,
                 last_stop TEXT,
@@ -52,6 +53,7 @@ def init_db() -> None:
             "session_string": "TEXT",
             "userbot_telegram_id": "INTEGER",
             "login_at": "TEXT",
+            "membership_expired_at": "TEXT",
             "userbot_status": "TEXT NOT NULL DEFAULT '🔴 Offline'",
             "last_start": "TEXT",
             "last_stop": "TEXT",
@@ -67,7 +69,8 @@ def get_user(telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, userbot_status, last_start, last_stop, "
+            "session_string, userbot_telegram_id, login_at, membership_expired_at, "
+            "userbot_status, last_start, last_stop, "
             "last_restart, created_at, updated_at "
             "FROM users WHERE telegram_id = ?",
             (telegram_id,),
@@ -111,12 +114,26 @@ def get_user_by_userbot_id(userbot_telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, userbot_status, "
+            "session_string, userbot_telegram_id, login_at, membership_expired_at, userbot_status, "
             "last_start, last_stop, last_restart, created_at, updated_at "
             "FROM users WHERE userbot_telegram_id = ?",
             (userbot_telegram_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def set_membership_expired_at(
+    telegram_id: int,
+    expired_at: str,
+) -> None:
+    """Simpan waktu berakhir Membership dalam format ISO UTC."""
+    with _connect() as connection:
+        connection.execute(
+            "UPDATE users SET membership_expired_at = ?, updated_at = ? "
+            "WHERE telegram_id = ?",
+            (expired_at, _now(), telegram_id),
+        )
+        connection.commit()
 
 
 def set_userbot_identity(telegram_id: int, userbot_telegram_id: int) -> None:
