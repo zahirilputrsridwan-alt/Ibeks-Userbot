@@ -12,7 +12,7 @@ from pyrogram import filters
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
-from utils.id_card_generator import generate_user_card
+from utils.fun_card_generator import generate_fun_card
 
 
 def setup(client):
@@ -24,12 +24,12 @@ def setup(client):
         chat_id = message.chat.id
 
         try:
-            card_buffer = await generate_user_card(client, target, card_type=card_type)
+            card_buffer = await generate_fun_card(client, target, card_type=card_type)
             card_buffer.name = f"ibeks_card_{card_type}_{target.id}.png"
             await client.send_document(
                 chat_id=chat_id,
                 document=card_buffer,
-                caption=f"{caption}\n👤 {target.first_name or 'User'}",
+                caption=None,
                 force_document=True,
             )
         except Exception as exc:

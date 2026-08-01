@@ -1,0 +1,114 @@
+Lanjutkan pengembangan IBEKS USERBOT.
+
+=================================================
+TAHAP 6
+ID CARD GENERATOR
+=================================================
+
+Jangan mengubah fitur sebelumnya.
+
+Buat plugin baru pada:
+
+plugins/fun/card.py
+
+=================================================
+COMMAND
+=================================================
+
+.cardp
+
+→ Membuat ID Card PRIA.
+
+.cardw
+
+→ Membuat ID Card WANITA.
+
+Bisa digunakan:
+
+.cardp
+
+atau reply ke seseorang.
+
+Jika tidak reply, gunakan akun sendiri.
+
+=================================================
+DESAIN
+=================================================
+
+Gunakan template futuristik hitam-hijau seperti referensi.
+
+Layout:
+
+- Foto profil Telegram berbentuk lingkaran besar di kanan.
+- Nama.
+- Username.
+- User ID.
+- Ketampanan (khusus pria) ATAU Kecantikan (khusus wanita).
+- Aura.
+- Tier.
+- Status Mental.
+
+=================================================
+SISTEM
+=================================================
+
+Gunakan seed:
+
+User ID + Minggu Saat Ini
+
+Sehingga:
+
+- Nilai tetap selama 1 minggu.
+- Minggu berikutnya berubah otomatis.
+- Tidak menggunakan database tambahan.
+
+=================================================
+DATA
+=================================================
+
+Sediakan minimal:
+
+- 50 Aura
+- 50 Tier
+- 50 Status Mental
+
+Serta nilai ketampanan/kecantikan 0–100 dengan progress bar.
+
+=================================================
+OUTPUT
+=================================================
+
+.cardp hanya menampilkan:
+
+- Ketampanan
+- Aura
+- Tier
+- Status Mental
+
+.cardw hanya menampilkan:
+
+- Kecantikan
+- Aura
+- Tier
+- Status Mental
+
+=================================================
+IMAGE
+=================================================
+
+Gunakan Pillow (PIL).
+
+Foto profil Telegram otomatis diunduh lalu ditempatkan dalam frame lingkaran.
+
+Jika user tidak memiliki foto profil, gunakan avatar default.
+
+=================================================
+KUALITAS
+=================================================
+
+- Resolusi minimal HD.
+- Font rapi dan mudah dibaca.
+- Desain modern.
+- Plugin modular.
+- Tidak mengubah plugin lain.
+- Jika selesai, berhenti dan tunggu instruksi berikutnya.
