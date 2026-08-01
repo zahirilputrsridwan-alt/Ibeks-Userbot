@@ -223,6 +223,16 @@ def setup(client):
         try:
             _FORWARDED_COMMAND_MESSAGES.add((message.chat.id, message.id))
             await _copy_command_to_userbot(client, message, user)
+            # Owner dan Userbot dapat memakai akun Telegram yang sama.
+            # Hapus command asli setelah berhasil disalin ke kanal Userbot
+            # agar chat Owner tidak menampilkan command asli + salinannya.
+            try:
+                await message.delete()
+            except Exception as exc:
+                log.warning(
+                    "Command sudah diteruskan tetapi pesan asli tidak dapat dihapus: %s",
+                    exc,
+                )
         except Exception as exc:
             log.exception(
                 "Gagal meneruskan command terminal user %s: %s",

@@ -7,4 +7,4 @@ The Manager terminal must remain command-agnostic: read the active prefix from t
 
 **Why:** Hardcoding commands would make new Userbot plugins unavailable through Manager and would create two divergent command systems.
 
-**How to apply:** Keep the relay as a generic Manager plugin, change the Userbot owner filter centrally so existing and future `dynamic_command(...) & filters.me` handlers accept Manager messages, and use a private startup handshake because a Bot API bot cannot initiate an unopened chat with a user account.
+**How to apply:** Keep the relay as a generic Manager plugin, change the Userbot owner filter centrally so existing and future `dynamic_command(...) & filters.me` handlers accept Manager messages, and use a private startup handshake because a Bot API bot cannot initiate an unopened chat with a user account. If Owner and Userbot share one Telegram account, remove the original command after successful relay so the relay copy does not appear as a duplicate.
