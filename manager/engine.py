@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 
 from config import USERBOT_DIR, USERBOT_MAIN, USERBOT_RUNTIME_DIR
-from database import get_user, update_userbot_state
+from database import get_user, set_userbot_identity, update_userbot_state
 from logger import log
 
 ONLINE = "🟢 Online"
@@ -24,7 +25,11 @@ _locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
 _ready_events: dict[int, asyncio.Event] = {}
 _ready_errors: dict[int, str] = {}
 _recent_output: dict[int, list[str]] = {}
+_ready_parts: dict[int, set[str]] = {}
 _intentional_stops: set[int] = set()
+_manager_bot_id: int = 0
+_USERBOT_ID_RE = re.compile(r"User ID\s*:\s*(\d+)")
+_MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
 
 
 def _timestamp() -> str:
@@ -43,8 +48,42 @@ def _child_environment(user_id: int, session_string: str) -> dict[str, str]:
     environment.pop("BOT_TOKEN", None)
     environment["STRING_SESSION"] = session_string
     environment["USERBOT_RUNTIME_DIR"] = _runtime_dir(user_id)
+    environment["MANAGER_BOT_ID"] = str(_manager_bot_id)
+    environment["MANAGER_USER_ID"] = str(user_id)
     environment["PYTHONUNBUFFERED"] = "1"
     return environment
+
+
+def set_manager_bot_id(bot_id: int) -> None:
+    """Simpan ID Manager Bot untuk mengizinkan relay pada child Userbot."""
+    global _manager_bot_id
+    _manager_bot_id = int(bot_id)
+
+
+def mark_userbot_handshake(manager_user_id: int, userbot_id: int) -> None:
+    """Tandai kanal privat Userbot ↔ Manager sudah terbentuk."""
+    user = get_user(manager_user_id)
+    if not user:
+        return
+    if (
+        user.get("userbot_telegram_id")
+        and user["userbot_telegram_id"] != userbot_id
+    ):
+        return
+    if not user.get("userbot_telegram_id"):
+        set_userbot_identity(manager_user_id, userbot_id)
+    _ready_parts.setdefault(manager_user_id, set()).add("handshake")
+    _maybe_mark_ready(manager_user_id)
+
+
+def _maybe_mark_ready(user_id: int) -> None:
+    """Set event startup setelah semua sinyal relay tersedia."""
+    if _ready_parts.get(user_id) != {"login", "identity", "handshake"}:
+        return
+    update_userbot_state(user_id, ONLINE, last_start=_timestamp())
+    event = _ready_events.get(user_id)
+    if event:
+        event.set()
 
 
 def is_running(user_id: int) -> bool:
@@ -67,10 +106,13 @@ async def _watch_process(user_id: int, process: asyncio.subprocess.Process) -> N
                     output.append(line)
                     del output[:-10]
                 if "✓ Login berhasil" in line or "Login berhasil" in line:
-                    update_userbot_state(user_id, ONLINE, last_start=_timestamp())
-                    event = _ready_events.get(user_id)
-                    if event:
-                        event.set()
+                    _ready_parts.setdefault(user_id, set()).add("login")
+                    _maybe_mark_ready(user_id)
+                identity = _USERBOT_ID_RE.search(line)
+                if identity:
+                    set_userbot_identity(user_id, int(identity.group(1)))
+                    _ready_parts.setdefault(user_id, set()).add("identity")
+                    _maybe_mark_ready(user_id)
                 if "Error" in line or "Traceback" in line:
                     _ready_errors[user_id] = line
         await process.wait()
@@ -103,6 +145,7 @@ async def _watch_process(user_id: int, process: asyncio.subprocess.Process) -> N
         else:
             update_userbot_state(user_id, OFFLINE)
         _recent_output.pop(user_id, None)
+        _ready_parts.pop(user_id, None)
 
 
 async def start_userbot(user_id: int) -> tuple[bool, str]:
@@ -122,6 +165,7 @@ async def _start_userbot_locked(user_id: int) -> tuple[bool, str]:
 
     update_userbot_state(user_id, STARTING)
     _ready_events[user_id] = asyncio.Event()
+    _ready_parts[user_id] = set()
     _ready_errors.pop(user_id, None)
     _recent_output[user_id] = []
     try:

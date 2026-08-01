@@ -32,6 +32,7 @@ def init_db() -> None:
                 status TEXT NOT NULL DEFAULT 'Belum Aktif',
                 phone_number TEXT,
                 session_string TEXT,
+                userbot_telegram_id INTEGER,
                 login_at TEXT,
                 userbot_status TEXT NOT NULL DEFAULT '🔴 Offline',
                 last_start TEXT,
@@ -49,6 +50,7 @@ def init_db() -> None:
         for column, definition in {
             "phone_number": "TEXT",
             "session_string": "TEXT",
+            "userbot_telegram_id": "INTEGER",
             "login_at": "TEXT",
             "userbot_status": "TEXT NOT NULL DEFAULT '🔴 Offline'",
             "last_start": "TEXT",
@@ -65,7 +67,7 @@ def get_user(telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, login_at, userbot_status, last_start, last_stop, "
+            "session_string, userbot_telegram_id, login_at, userbot_status, last_start, last_stop, "
             "last_restart, created_at, updated_at "
             "FROM users WHERE telegram_id = ?",
             (telegram_id,),
@@ -104,10 +106,35 @@ def get_or_create_user(
     return get_user(telegram_id) or {}
 
 
+def get_user_by_userbot_id(userbot_telegram_id: int) -> dict | None:
+    """Ambil pemilik Manager berdasarkan ID akun Telegram Userbot."""
+    with _connect() as connection:
+        row = connection.execute(
+            "SELECT telegram_id, username, full_name, status, phone_number, "
+            "session_string, userbot_telegram_id, login_at, userbot_status, "
+            "last_start, last_stop, last_restart, created_at, updated_at "
+            "FROM users WHERE userbot_telegram_id = ?",
+            (userbot_telegram_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def set_userbot_identity(telegram_id: int, userbot_telegram_id: int) -> None:
+    """Simpan ID akun Userbot setelah child berhasil login."""
+    with _connect() as connection:
+        connection.execute(
+            "UPDATE users SET userbot_telegram_id = ?, updated_at = ? "
+            "WHERE telegram_id = ?",
+            (userbot_telegram_id, _now(), telegram_id),
+        )
+        connection.commit()
+
+
 def save_login(
     telegram_id: int,
     phone_number: str,
     session_string: str,
+    userbot_telegram_id: int,
     username: str | None,
     full_name: str,
 ) -> None:
@@ -121,6 +148,7 @@ def save_login(
                 full_name = ?,
                 phone_number = ?,
                 session_string = ?,
+                userbot_telegram_id = ?,
                 login_at = ?,
                 status = 'Aktif',
                 userbot_status = '🟡 Starting',
@@ -132,6 +160,7 @@ def save_login(
                 full_name,
                 phone_number,
                 session_string,
+                userbot_telegram_id,
                 timestamp,
                 timestamp,
                 telegram_id,

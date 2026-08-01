@@ -208,6 +208,7 @@ async def _finish_login(message, state: LoginState, logged_user) -> None:
         telegram_id=message.from_user.id,
         phone_number=state.phone_number or "",
         session_string=session_string,
+        userbot_telegram_id=logged_user.id,
         username=logged_user.username,
         full_name=" ".join(
             part for part in [logged_user.first_name, logged_user.last_name] if part

@@ -19,7 +19,7 @@ Tambahkan secret berikut di Replit:
 `BOT_TOKEN` digunakan untuk login bot manager. Login akun Telegram pengguna
 menggunakan OTP dan Password Dua Langkah didukung melalui menu `📲 Minta Akses`.
 `STRING_SESSION` pengguna tidak pernah dikirim ke chat; hanya disimpan di
-database Manager Bot. Eksekusi Userbot belum diaktifkan.
+database Manager Bot.
 
 ## Menjalankan
 
@@ -58,3 +58,20 @@ Kontrol tersedia dari menu `👤 Akun Saya`:
 Status lifecycle disimpan di SQLite. `STRING_SESSION` dikirim ke proses child
 melalui environment internal dan tidak pernah dicetak ke command line, pesan,
 atau log Manager Bot.
+
+## Terminal Userbot
+
+Pesan privat yang diawali prefix aktif diteruskan ke Userbot akun tersebut.
+Prefix dibaca langsung dari database runtime Userbot, sehingga perubahan lewat
+`.setprefix` langsung berlaku di Manager Bot. Manager Bot tidak mempunyai daftar
+command manual; plugin Userbot yang terpasang menjadi sumber kebenaran.
+
+Saat Userbot dijalankan oleh Manager, Userbot membuka kanal privat internal ke
+Manager terlebih dahulu. Ini diperlukan agar Telegram mengizinkan Bot Manager
+mengirim pesan ke akun Userbot; pesan handshake tersebut tidak diteruskan ke
+pengguna.
+
+Semua output pesan Userbot disalin kembali, termasuk teks, foto, video,
+animation, sticker, voice, audio, dan document. Command yang tidak tersedia
+menghasilkan error dari Userbot, sedangkan Userbot yang berhenti menampilkan
+instruksi untuk menyalakannya.

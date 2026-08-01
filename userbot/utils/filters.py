@@ -27,3 +27,24 @@ def dynamic_command(*commands):
                 return True
         return False
     return filters.create(filter_func, "DynamicCommandFilter", commands=commands)
+
+
+def install_relay_owner_filter(manager_bot_id: int) -> None:
+    """Izinkan command dari Manager Bot tanpa mengubah seluruh plugin."""
+    if not manager_bot_id:
+        return
+
+    async def relay_me_filter(_, __, message):
+        return bool(
+            message
+            and (
+                (message.from_user and message.from_user.is_self)
+                or getattr(message, "outgoing", False)
+                or (
+                    message.from_user
+                    and message.from_user.id == manager_bot_id
+                )
+            )
+        )
+
+    filters.me = filters.create(relay_me_filter, "RelayOwnerFilter")
