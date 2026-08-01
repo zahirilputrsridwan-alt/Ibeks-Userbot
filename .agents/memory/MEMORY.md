@@ -1,2 +1,3 @@
 - [PyTgCalls Python 3.11 compatibility](pytgcalls-python311.md) — stable wheels don't support Python 3.11; use the pre-release line with `--prerelease=allow`.
 - [Telegram edit animation behavior](telegram-edit-animation.md) — skip duplicate first-frame edits and keep persistent results separate from command auto-delete.
+- [Fun card visual style](fun-card-visual-style.md) — keep .cardp/.cardw as 1280×720 neon ID cards with large circular photo and reference-style footer.

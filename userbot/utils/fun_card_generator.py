@@ -10,7 +10,7 @@ import hashlib
 import io
 import os
 from datetime import datetime, timezone
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
@@ -111,50 +111,55 @@ def _text(draw: ImageDraw.ImageDraw, xy: Tuple[int, int], value: str, font, fill
 
 def _draw_background(draw: ImageDraw.ImageDraw, palette: dict) -> None:
     draw.rectangle([0, 0, CARD_WIDTH, CARD_HEIGHT], fill=palette["background"])
-    for y in range(0, CARD_HEIGHT, 6):
-        draw.line([(0, y), (CARD_WIDTH, y)], fill=palette["panel"], width=1)
-    for x in range(0, CARD_WIDTH, 64):
-        draw.line([(x, 0), (x, CARD_HEIGHT)], fill=palette["accent_dim"], width=1)
-    # Angular decorative panels inspired by the supplied reference.
+    # Low-contrast angular facets match the reference without obscuring text.
     draw.polygon(
-        [(0, 0), (450, 0), (520, 130), (0, 250)],
+        [(0, 0), (490, 0), (560, 165), (0, 295)],
         fill=palette["panel"],
     )
     draw.polygon(
-        [(1280, 720), (850, 720), (790, 600), (1280, 470)],
+        [(1280, 720), (820, 720), (760, 590), (1280, 420)],
         fill=palette["panel"],
     )
+    draw.polygon(
+        [(425, 0), (810, 0), (710, 165), (540, 165)],
+        fill=palette["panel_alt"],
+    )
+    draw.line([(0, 290), (420, 290), (530, 165), (810, 165)], fill=palette["accent_dim"], width=1)
+    draw.line([(410, 0), (530, 165)], fill=palette["accent_dim"], width=1)
+    draw.line([(810, 0), (710, 165)], fill=palette["accent_dim"], width=1)
 
 
 def _draw_frame(draw: ImageDraw.ImageDraw, palette: dict) -> None:
-    margin = 22
-    draw.rounded_rectangle(
-        [margin, margin, CARD_WIDTH - margin, CARD_HEIGHT - margin],
-        radius=18,
-        outline=palette["accent"],
-        width=3,
+    # Double polygon outline and technical corner brackets from the reference.
+    draw.line(
+        [(28, 28), (450, 28), (505, 84), (805, 84), (850, 28), (1252, 28)],
+        fill=palette["text"],
+        width=2,
     )
-    draw.rounded_rectangle(
-        [38, 38, CARD_WIDTH - 38, CARD_HEIGHT - 38],
-        radius=12,
-        outline=palette["accent_dim"],
-        width=1,
+    draw.line(
+        [(28, 692), (450, 692), (505, 636), (805, 636), (850, 692), (1252, 692)],
+        fill=palette["accent"],
+        width=2,
     )
-    # Corner brackets.
-    length = 54
-    width = 5
+    draw.rectangle([28, 28, CARD_WIDTH - 28, CARD_HEIGHT - 28], outline=palette["accent_dim"], width=1)
+    length = 62
+    width = 4
     corners = (
-        ((48, 118), (48, 48), (118, 48)),
-        ((CARD_WIDTH - 118, 48), (CARD_WIDTH - 48, 48), (CARD_WIDTH - 48, 118)),
-        ((48, CARD_HEIGHT - 118), (48, CARD_HEIGHT - 48), (118, CARD_HEIGHT - 48)),
+        ((48, 128), (48, 48), (128, 48)),
+        ((CARD_WIDTH - 128, 48), (CARD_WIDTH - 48, 48), (CARD_WIDTH - 48, 128)),
+        ((48, CARD_HEIGHT - 128), (48, CARD_HEIGHT - 48), (128, CARD_HEIGHT - 48)),
         (
-            (CARD_WIDTH - 118, CARD_HEIGHT - 48),
+            (CARD_WIDTH - 128, CARD_HEIGHT - 48),
             (CARD_WIDTH - 48, CARD_HEIGHT - 48),
-            (CARD_WIDTH - 48, CARD_HEIGHT - 118),
+            (CARD_WIDTH - 48, CARD_HEIGHT - 128),
         ),
     )
     for points in corners:
         draw.line(points, fill=palette["accent"], width=width)
+    # Small reference-style sparkles.
+    for x, y in ((385, 75), (670, 166), (1080, 125), (720, 580)):
+        draw.line([(x - 12, y), (x + 12, y)], fill=palette["accent"], width=2)
+        draw.line([(x, y - 12), (x, y + 12)], fill=palette["accent"], width=2)
 
 
 def _draw_progress(
@@ -285,18 +290,31 @@ def _field_value(
     label_font,
     progress: Optional[int] = None,
 ) -> None:
-    x_label = 70
-    x_value = 292
-    draw.line([(70, y + 41), (690, y + 41)], fill=palette["accent_dim"], width=1)
-    draw.rounded_rectangle([70, y + 3, 92, y + 25], radius=4, fill=palette["accent"])
-    _text(draw, (112, y), label, label_font, palette["accent"])
-    _text(draw, (260, y), ":", label_font, palette["text"])
+    x_value = 302
+    icons = {
+        "NAMA": "●",
+        "USERNAME": "@",
+        "USER ID": "▣",
+        "KETAMPANAN": "★",
+        "KECANTIKAN": "♥",
+        "AURA": "✦",
+        "TIER": "♛",
+        "STATUS MENTAL": "◉",
+    }
+    draw.line([(70, y + 40), (690, y + 40)], fill=palette["accent_dim"], width=1)
+    draw.rectangle([70, y + 2, 106, y + 32], fill=palette["accent"])
+    icon_font = _font("DejaVuSans-Bold.ttf", 19)
+    icon = icons.get(label, "•")
+    bbox = draw.textbbox((0, 0), icon, font=icon_font)
+    draw.text((88 - (bbox[2] - bbox[0]) // 2, y + 5), icon, font=icon_font, fill=palette["background"])
+    _text(draw, (122, y + 2), label, label_font, palette["accent"])
+    _text(draw, (270, y + 2), ":", label_font, palette["text"])
     if progress is None:
-        value = _fit_text(draw, value, value_font, 410)
-        _text(draw, (x_value, y), value, value_font, palette["text"])
+        value = _fit_text(draw, value, value_font, 375)
+        _text(draw, (x_value, y + 2), value, value_font, palette["text"])
     else:
-        _text(draw, (x_value, y), f"{progress}%", value_font, palette["text"])
-        _draw_progress(draw, x_value + 78, y + 8, 230, progress, palette)
+        _text(draw, (x_value, y + 2), f"{progress}%", value_font, palette["text"])
+        _draw_progress(draw, x_value + 78, y + 10, 230, progress, palette)
 
 
 async def generate_fun_card(client: Client, user: User, card_type: str) -> io.BytesIO:
@@ -309,7 +327,7 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
     name = _name(user)
     username = f"@{user.username}" if user.username else "N/A"
     stat_label = "KETAMPANAN" if card_type == "male" else "KECANTIKAN"
-    card_title = "ID CARD / MALE" if card_type == "male" else "ID CARD / FEMALE"
+    card_title = "ID CARD"
     badge = "2ND GENERATION" if card_type == "male" else "NEON EDITION"
 
     image = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), palette["background"] + (255,))
@@ -323,13 +341,20 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
     font_value = _font("DejaVuSans.ttf", 19)
     font_small = _font("DejaVuSans.ttf", 15)
 
-    _text(draw, (70, 56), card_title, font_header, palette["text"])
-    _text(draw, (560, 54), "IBEKS // PERSONAL IDENTITY SYSTEM", font_small, palette["muted"])
-    draw.rounded_rectangle([70, 112, 285, 151], radius=18, fill=palette["accent"])
-    _text(draw, (96, 120), "TRAINER PROFILE", _font("DejaVuSans-Bold.ttf", 16), palette["background"])
-    draw.line([(305, 132), (530, 132)], fill=palette["accent"], width=4)
-    draw.line([(320, 143), (470, 143)], fill=palette["accent_alt"], width=2)
-    _text(draw, (70, 170), "PERSONAL DATA", _font("DejaVuSans-Bold.ttf", 15), palette["accent_alt"])
+    _text(draw, (70, 57), card_title, font_header, palette["text"])
+    draw.line([(190, 68), (330, 68)], fill=palette["text"], width=4)
+    draw.line([(205, 81), (315, 81)], fill=palette["text"], width=2)
+    _text(draw, (530, 48), "I  P  S  T  O  R  E", font_header, palette["text"])
+    _text(draw, (1060, 55), "DIAMOND X", font_small, palette["text"])
+    draw.ellipse([1015, 55, 1040, 80], outline=palette["accent"], width=3)
+    draw.line([(1018, 68), (1037, 68)], fill=palette["accent"], width=2)
+
+    _text(draw, (70, 132), "TRAINEE", _font("DejaVuSans-Bold.ttf", 31), palette["accent"])
+    draw.line([(245, 148), (375, 148)], fill=palette["text"], width=4)
+    draw.line([(260, 160), (350, 160)], fill=palette["text"], width=2)
+    draw.rounded_rectangle([405, 124, 625, 162], radius=19, fill=palette["accent"])
+    _text(draw, (437, 132), badge, _font("DejaVuSans-Bold.ttf", 15), palette["background"])
+    _text(draw, (70, 180), "IDENTITY DATA", _font("DejaVuSans-Bold.ttf", 15), palette["accent_alt"])
 
     fields = (
         ("NAMA", name, None),
@@ -343,9 +368,12 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
     for index, (label, value, progress) in enumerate(fields):
         _field_value(draw, label, value, 208 + index * 57, palette, font_value, font_label, progress)
 
-    # Photo panel on the right.
+    # Large circular photo area on the right, matching the supplied reference.
     center_x, center_y, radius = 965, 355, 190
-    draw.rounded_rectangle([730, 145, 1190, 570], radius=32, fill=palette["panel"], outline=palette["accent_dim"], width=2)
+    draw.line([(755, 180), (755, 130), (805, 130)], fill=palette["accent"], width=4)
+    draw.line([(1125, 130), (1175, 130), (1175, 180)], fill=palette["accent"], width=4)
+    draw.line([(755, 530), (755, 580), (805, 580)], fill=palette["accent"], width=4)
+    draw.line([(1125, 580), (1175, 580), (1175, 530)], fill=palette["accent"], width=4)
     for offset in (18, 10, 4):
         draw.ellipse(
             [center_x - radius - offset, center_y - radius - offset, center_x + radius + offset, center_y + radius + offset],
@@ -370,16 +398,22 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
         profile_circle,
     )
     draw = ImageDraw.Draw(image)
-    _text(draw, (775, 178), "BIOMETRIC PHOTO", font_small, palette["muted"])
-    _text(draw, (805, 528), badge, _font("DejaVuSans-Bold.ttf", 15), palette["accent_alt"])
+    _text(draw, (790, 155), "PROFILE PHOTO", font_small, palette["muted"])
+    for dot_x in range(1080, 1170, 18):
+        for dot_y in range(165, 220, 18):
+            draw.ellipse([dot_x, dot_y, dot_x + 4, dot_y + 4], fill=palette["accent"])
 
     # Footer, code and QR.
-    draw.line([(70, 625), (1190, 625)], fill=palette["accent_dim"], width=2)
-    _text(draw, (70, 646), "DO NOT MOCK THE ORDINARY.", font_small, palette["muted"])
-    _text(draw, (510, 642), "IBEKS", _font("DejaVuSans-Bold.ttf", 32), palette["text"])
-    _text(draw, (585, 678), "USERBOT", _font("DejaVuSans-Bold.ttf", 13), palette["accent_alt"])
-    _draw_code(draw, 760, 640, user.id, palette)
-    _draw_qr(draw, 1090, 638, user.id, palette)
+    draw.line([(70, 600), (420, 600)], fill=palette["accent_dim"], width=2)
+    draw.line([(860, 600), (1190, 600)], fill=palette["accent_dim"], width=2)
+    draw.rounded_rectangle([70, 620, 430, 678], radius=12, outline=palette["accent"], width=2)
+    _text(draw, (90, 630), "“", _font("DejaVuSans-Bold.ttf", 28), palette["accent"])
+    _text(draw, (122, 630), "JANGAN REMEHKAN YANG BIASA.", font_small, palette["muted"])
+    _text(draw, (122, 650), "MEREKA BISA LOGIN POTENSI.", font_small, palette["muted"])
+    _text(draw, (520, 624), "IBEKS", _font("DejaVuSans-Bold.ttf", 38), palette["text"])
+    _text(draw, (585, 668), "U S E R B O T", _font("DejaVuSans-Bold.ttf", 12), palette["accent_alt"])
+    _draw_code(draw, 760, 620, user.id, palette)
+    _draw_qr(draw, 1090, 614, user.id, palette)
 
     result = io.BytesIO()
     image.convert("RGB").save(result, format="PNG", optimize=True)
