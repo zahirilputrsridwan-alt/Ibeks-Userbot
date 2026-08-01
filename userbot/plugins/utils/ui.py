@@ -88,3 +88,38 @@ async def send_ui(
             log.warning("[UI] Expandable blockquote gagal, kirim UI lama: %s", exc)
 
     return await client.send_message(chat_id, text, **send_kwargs)
+
+
+async def edit_ui(client, message, body: str, reply_markup=None, **kwargs):
+    """Edit pesan dengan parser/entity UI yang sama seperti send_ui()."""
+    text = safe_text(body)
+    try:
+        parsed = await Parser(None).parse(text)
+        parsed_text = parsed["message"]
+        entities = list(parsed.get("entities") or [])
+        if parsed_text:
+            entities.append(
+                _ExpandableBlockquote(
+                    collapsed=True,
+                    offset=0,
+                    length=len(parser_utils.add_surrogates(parsed_text)),
+                )
+            )
+        return await client.edit_message_text(
+            message.chat.id,
+            message.id,
+            parsed_text,
+            parse_mode=None,
+            entities=entities,
+            reply_markup=reply_markup,
+            **kwargs,
+        )
+    except Exception as exc:
+        log.warning("[UI] Edit expandable blockquote gagal, edit UI lama: %s", exc)
+        return await client.edit_message_text(
+            message.chat.id,
+            message.id,
+            text,
+            reply_markup=reply_markup,
+            **kwargs,
+        )
