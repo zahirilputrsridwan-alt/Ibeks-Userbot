@@ -68,23 +68,13 @@ def setup(client):
         try:
             await _animate(result_message)
             result = _result_for_user(message.from_user.id)
-            await result_message.edit_text(
-                "💦 KOCOK — REPORT 💦\n"
-                "━━━━━━ ★ ━━━━━━\n\n"
-                f"{result}\n\n"
-                "⨱ IBEKS UBOT ⨱"
-            )
+            await result_message.edit_text(result)
         except Exception as exc:
             # Animasi tidak boleh membuat hasil akhir hilang jika Telegram
             # menolak salah satu edit (misalnya pesan dihapus lebih dulu).
             logging.exception("[Stage9] Animasi .ckocok gagal: %s", exc)
             try:
                 result = _result_for_user(message.from_user.id)
-                await result_message.edit_text(
-                    "💦 KOCOK — REPORT 💦\n"
-                    "━━━━━━ ★ ━━━━━━\n\n"
-                    f"{result}\n\n"
-                    "⨱ IBEKS UBOT ⨱"
-                )
+                await result_message.edit_text(result)
             except Exception as result_exc:
                 logging.exception("[Stage9] Gagal mengirim hasil .ckocok: %s", result_exc)
