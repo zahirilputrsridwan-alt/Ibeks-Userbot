@@ -112,6 +112,8 @@ def setup(client):
         owner = get_user_by_userbot_id(message.from_user.id)
         if not owner:
             return
+        if owner.get("suspended"):
+            return
         try:
             await client.copy_message(
                 owner["telegram_id"],
@@ -137,6 +139,9 @@ def setup(client):
         """Teruskan command ber-prefix tanpa mengetahui daftar plugin."""
         user = get_user(message.from_user.id)
         if not user or not user.get("userbot_telegram_id"):
+            return
+        if user.get("suspended"):
+            await message.reply("❌ Akun Anda sedang disuspend oleh Admin.")
             return
         if not has_active_membership(user):
             await message.reply(

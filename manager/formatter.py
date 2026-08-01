@@ -37,6 +37,7 @@ def account_text(user_data: dict) -> str:
         f"• Telegram ID : `{user_data.get('telegram_id')}`\n"
         f"• Nomor : {user_data.get('phone_number') or 'Belum tersedia'}\n"
         f"• Status Login : {status_line}\n"
+        f"• Status Akun : {'⛔ Suspended' if user_data.get('suspended') else '✅ Active'}\n"
         f"• Status Membership : {membership['status']}\n"
         f"• Tanggal Berakhir : {display_date(membership['expired_at'])}\n"
         f"• Sisa Hari : {membership['days_remaining']}\n"

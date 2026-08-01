@@ -7,3 +7,4 @@
 - [Manager userbot engine](manager-userbot-engine.md) — run each logged-in userbot as an isolated child process with its own runtime directory and lifecycle state.
 - [Manager terminal relay](manager-terminal-relay.md) — relay by prefix and private handshake, never by a hardcoded command list.
 - [Manager membership](manager-membership.md) — calculate Active/Expired from UTC expiry and grant the initial period only once.
+- [Manager admin panel](manager-admin-panel.md) — Owner-only operations use centralized checks and SQLite audit logs.

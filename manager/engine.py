@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import shutil
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -95,6 +96,13 @@ def status_for(user_id: int) -> str:
     return ONLINE if is_running(user_id) else OFFLINE
 
 
+def remove_userbot_runtime(user_id: int) -> None:
+    """Hapus runtime terisolasi setelah user berhasil dihapus."""
+    path = USERBOT_RUNTIME_DIR / str(user_id)
+    if path.exists():
+        shutil.rmtree(path)
+
+
 async def _watch_process(user_id: int, process: asyncio.subprocess.Process) -> None:
     try:
         if process.stdout:
@@ -159,6 +167,8 @@ async def _start_userbot_locked(user_id: int) -> tuple[bool, str]:
     user = get_user(user_id)
     if not user or not user.get("session_string"):
         return False, "Akun Telegram belum login."
+    if user.get("suspended"):
+        return False, "User sedang disuspend oleh Admin."
     if is_running(user_id):
         update_userbot_state(user_id, ONLINE)
         return True, "Userbot sudah berjalan."

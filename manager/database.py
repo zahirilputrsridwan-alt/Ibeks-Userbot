@@ -35,6 +35,7 @@ def init_db() -> None:
                 userbot_telegram_id INTEGER,
                 login_at TEXT,
                 membership_expired_at TEXT,
+                suspended INTEGER NOT NULL DEFAULT 0,
                 userbot_status TEXT NOT NULL DEFAULT '🔴 Offline',
                 last_start TEXT,
                 last_stop TEXT,
@@ -54,6 +55,7 @@ def init_db() -> None:
             "userbot_telegram_id": "INTEGER",
             "login_at": "TEXT",
             "membership_expired_at": "TEXT",
+            "suspended": "INTEGER NOT NULL DEFAULT 0",
             "userbot_status": "TEXT NOT NULL DEFAULT '🔴 Offline'",
             "last_start": "TEXT",
             "last_stop": "TEXT",
@@ -61,6 +63,18 @@ def init_db() -> None:
         }.items():
             if column not in columns:
                 connection.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS admin_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_id INTEGER NOT NULL,
+                action TEXT NOT NULL,
+                target_user_id INTEGER,
+                details TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
         connection.commit()
 
 
@@ -70,7 +84,7 @@ def get_user(telegram_id: int) -> dict | None:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
             "session_string, userbot_telegram_id, login_at, membership_expired_at, "
-            "userbot_status, last_start, last_stop, "
+            "suspended, userbot_status, last_start, last_stop, "
             "last_restart, created_at, updated_at "
             "FROM users WHERE telegram_id = ?",
             (telegram_id,),
@@ -114,12 +128,99 @@ def get_user_by_userbot_id(userbot_telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, membership_expired_at, userbot_status, "
+            "session_string, userbot_telegram_id, login_at, membership_expired_at, suspended, "
+            "userbot_status, "
             "last_start, last_stop, last_restart, created_at, updated_at "
             "FROM users WHERE userbot_telegram_id = ?",
             (userbot_telegram_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def list_users() -> list[dict]:
+    """Ambil semua user tanpa mengekspos session ke caller."""
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT telegram_id, username, full_name, status, phone_number, "
+            "userbot_telegram_id, login_at, membership_expired_at, suspended, "
+            "userbot_status, last_start, last_stop, last_restart, created_at, updated_at "
+            "FROM users ORDER BY created_at ASC"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_suspended(telegram_id: int, suspended: bool) -> bool:
+    """Ubah status suspend user dan kembalikan apakah user ditemukan."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            "UPDATE users SET suspended = ?, updated_at = ? WHERE telegram_id = ?",
+            (1 if suspended else 0, _now(), telegram_id),
+        )
+        connection.commit()
+    return cursor.rowcount > 0
+
+
+def delete_user(telegram_id: int) -> bool:
+    """Hapus satu user dari database Manager."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            "DELETE FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        )
+        connection.commit()
+    return cursor.rowcount > 0
+
+
+def statistics() -> dict[str, int]:
+    """Hitung statistik user dari snapshot SQLite."""
+    # Membership memiliki aturan UTC sendiri; jangan membandingkan ISO string
+    # dengan fungsi waktu SQLite yang memakai timezone lokal.
+    from membership import membership_status
+
+    users = list_users()
+    total = len(users)
+    active = sum(
+        1
+        for user in users
+        if user.get("suspended") == 0
+        and membership_status(user.get("membership_expired_at")) == "Active"
+    )
+    expired = sum(
+        1
+        for user in users
+        if membership_status(user.get("membership_expired_at")) == "Expired"
+    )
+    online = sum(
+        1
+        for user in users
+        if user.get("userbot_status") == "🟢 Online"
+    )
+    return {
+        "total": total,
+        "active": active,
+        "expired": expired,
+        "online": online,
+        "offline": max(0, total - online),
+    }
+
+
+def log_admin_activity(
+    admin_id: int,
+    action: str,
+    target_user_id: int | None = None,
+    details: str | None = None,
+) -> None:
+    """Simpan audit aktivitas Admin tanpa menyimpan session atau pesan rahasia."""
+    with _connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO admin_logs
+                (admin_id, action, target_user_id, details, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (admin_id, action, target_user_id, details, _now()),
+        )
+        connection.commit()
 
 
 def set_membership_expired_at(

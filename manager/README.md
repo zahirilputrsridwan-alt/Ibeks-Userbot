@@ -82,4 +82,19 @@ Login Telegram pertama yang berhasil memberikan Membership selama 30 hari.
 Tanggal berakhir disimpan dalam UTC pada SQLite dan status `Active` atau
 `Expired` dihitung saat data dibaca. Command Terminal tidak diteruskan jika
 Membership sudah berakhir. Fungsi `extend_membership()` tersedia untuk plugin
-Admin pada tahap berikutnya.
+Admin.
+
+## Admin Panel
+
+Owner Manager Bot adalah Telegram ID `8823165964`. Hanya Owner yang dapat
+melihat dan membuka tombol `🛠 Admin Panel`. Panel menyediakan:
+
+- Daftar dan detail user
+- Statistik total, aktif, expired, online, dan offline
+- Perpanjangan Membership `+7`, `+30`, `+90`, dan `+365` hari
+- Suspend, aktifkan, serta hapus user dengan konfirmasi
+- Broadcast pesan atau media ke seluruh user terdaftar
+
+Semua operasi Admin dan percobaan akses non-Owner dicatat pada tabel audit
+SQLite `admin_logs`. Penghapusan user juga membersihkan runtime Userbot
+terisolasinya.
