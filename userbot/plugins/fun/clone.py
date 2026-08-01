@@ -5,14 +5,22 @@ Satu-satunya command yang didaftarkan plugin ini adalah ``.clone``.
 
 import asyncio
 import io
+import json
+import os
+import tempfile
+from typing import Optional
 
 from pyrogram import filters
 from pyrogram.errors import RPCError
 
-from config import AUTO_DELETE_CMD
+from config import AUTO_DELETE_CMD, BASE_DIR
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.logger import log
+
+
+BACKUP_METADATA_PATH = os.path.join(BASE_DIR, ".clone_profile_backup.json")
+BACKUP_PHOTO_PATH = os.path.join(BASE_DIR, ".clone_profile_photo.jpg")
 
 
 async def _download_target_photo(client, target):
@@ -39,6 +47,73 @@ async def _download_target_photo(client, target):
     except Exception as exc:
         log.exception("[Clone] Gagal mengunduh foto target %s: %s", target.id, exc)
     return None
+
+
+async def _get_profile_data(client):
+    """Ambil data profil akun userbot yang sedang login."""
+    me = await client.get_me()
+    profile = await client.get_chat(me.id)
+    return me, {
+        "first_name": me.first_name or "",
+        "last_name": me.last_name or "",
+        "bio": profile.bio or "",
+    }
+
+
+def _write_backup(metadata: dict, photo_bytes: Optional[bytes]) -> None:
+    """Simpan backup terakhir secara atomik agar tidak korup saat restart."""
+    metadata_dir = os.path.dirname(BACKUP_METADATA_PATH) or BASE_DIR
+    photo_dir = os.path.dirname(BACKUP_PHOTO_PATH) or BASE_DIR
+    os.makedirs(metadata_dir, exist_ok=True)
+    os.makedirs(photo_dir, exist_ok=True)
+    photo_temp = None
+    metadata_temp = None
+    try:
+        if photo_bytes is not None:
+            with tempfile.NamedTemporaryFile(
+                mode="wb", dir=photo_dir, prefix=".clone-photo-", delete=False
+            ) as file:
+                file.write(photo_bytes)
+                photo_temp = file.name
+
+        metadata["photo_file"] = os.path.basename(BACKUP_PHOTO_PATH) if photo_bytes else None
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=metadata_dir,
+            prefix=".clone-metadata-",
+            delete=False,
+        ) as file:
+            json.dump(metadata, file, ensure_ascii=False, indent=2)
+            file.write("\n")
+            metadata_temp = file.name
+
+        if photo_temp:
+            os.replace(photo_temp, BACKUP_PHOTO_PATH)
+        elif os.path.exists(BACKUP_PHOTO_PATH):
+            os.remove(BACKUP_PHOTO_PATH)
+        os.replace(metadata_temp, BACKUP_METADATA_PATH)
+    finally:
+        for path in (photo_temp, metadata_temp):
+            if path and os.path.exists(path):
+                os.remove(path)
+
+
+async def create_profile_backup(client) -> None:
+    """Backup profil asli sebelum clone; gagal berarti clone dibatalkan."""
+    me, profile_data = await _get_profile_data(client)
+    photo_bytes = None
+    if me.photo:
+        photo = await _download_target_photo(client, me)
+        if photo is None:
+            raise RuntimeError("foto profil asli gagal diunduh")
+        photo.seek(0)
+        photo_bytes = photo.read()
+        if not photo_bytes:
+            raise RuntimeError("foto profil asli kosong")
+
+    _write_backup(profile_data, photo_bytes)
+    log.info("[Clone] Backup profil asli berhasil disimpan.")
 
 
 def _telegram_error(exc: Exception) -> str:
@@ -71,6 +146,17 @@ def setup(client):
         target = reply.from_user
         photo_status = "tidak ada"
         errors = []
+
+        try:
+            await create_profile_backup(client)
+        except Exception as exc:
+            log.exception("[Clone] Backup profil asli gagal: %s", exc)
+            await _notify(
+                client,
+                chat_id,
+                f"❌ Clone dibatalkan karena backup profil gagal: {_telegram_error(exc)}.",
+            )
+            return
 
         # Bio tidak tersedia di object User reply; ambil dari chat target.
         target_bio = ""

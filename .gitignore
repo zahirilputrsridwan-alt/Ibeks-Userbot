@@ -47,3 +47,7 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# IBEKS clone profile backup
+userbot/.clone_profile_backup.json
+userbot/.clone_profile_photo.jpg
