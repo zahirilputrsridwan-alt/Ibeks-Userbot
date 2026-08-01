@@ -41,8 +41,20 @@ def load_plugins(client) -> dict:
             else:
                 log.info("Plugin aktif: %s", module_name)
         except Exception as exc:
-            log.error("Plugin gagal dimuat %s: %s\n%s", module_name, exc, traceback.format_exc())
-            failed.append({"module": module_name, "error": str(exc)})
+            reason = str(exc).strip() or type(exc).__name__
+            log.error(
+                "Plugin gagal dimuat: %s — alasan: %s\n%s",
+                module_name,
+                reason,
+                traceback.format_exc(),
+            )
+            failed.append({"module": module_name, "error": reason})
 
     log.info("Total plugin: %s berhasil, %s gagal.", len(loaded), len(failed))
+    for item in failed:
+        log.error(
+            "Plugin gagal dimuat: %s — alasan: %s",
+            item["module"],
+            item["error"],
+        )
     return {"loaded": loaded, "failed": failed}

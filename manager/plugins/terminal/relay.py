@@ -17,6 +17,7 @@ MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
 _RECENT_COMMANDS: dict[tuple[int, str], float] = {}
 _RECENT_RESPONSES: dict[tuple[int, int], float] = {}
 _RECENT_RESPONSE_BODIES: dict[tuple[int, str], float] = {}
+_FORWARDED_COMMAND_MESSAGES: set[tuple[int, int]] = set()
 _DEDUPE_SECONDS = 30.0
 _RESPONSE_BODY_DEDUPE_SECONDS = 10.0
 
@@ -83,6 +84,10 @@ def _command_filter(_, __, message) -> bool:
 
 def _response_filter(_, __, message) -> bool:
     """Cocokkan seluruh output yang dikirim akun Userbot ke Manager Bot."""
+    if not message or not message.from_user:
+        return False
+    if message.chat and (message.chat.id, message.id) in _FORWARDED_COMMAND_MESSAGES:
+        return False
     text = (message.text or message.caption or "").strip() if message else ""
     if text.startswith(MANAGER_HANDSHAKE):
         try:
@@ -183,7 +188,7 @@ def setup(client):
         filters.private
         & filters.incoming
         & filters.create(_command_filter, "UserbotCommand"),
-        group=-1,
+        group=-3,
     )
     @safe_handler
     async def terminal_command_handler(client, message):
@@ -216,6 +221,7 @@ def setup(client):
             )
             return
         try:
+            _FORWARDED_COMMAND_MESSAGES.add((message.chat.id, message.id))
             await _copy_command_to_userbot(client, message, user)
         except Exception as exc:
             log.exception(

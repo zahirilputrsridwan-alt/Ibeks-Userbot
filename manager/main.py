@@ -103,17 +103,15 @@ def main() -> None:
 
         stats = load_plugins(client)
         if stats["failed"]:
-            log.error("Plugin gagal dimuat: %s", stats["failed"])
-        required_plugins = {
-            "plugins.start.start",
-            "plugins.account.account",
-            "plugins.admin.panel",
-        }
-        missing_plugins = required_plugins.difference(stats["loaded"])
-        if missing_plugins:
-            raise RuntimeError(
-                "Plugin inti gagal dimuat: " + ", ".join(sorted(missing_plugins))
+            log.error(
+                "Startup dilanjutkan meskipun ada plugin gagal dimuat: %s",
+                ", ".join(
+                    f"{item['module']} ({item['error']})"
+                    for item in stats["failed"]
+                ),
             )
+        else:
+            log.info("✓ Semua plugin Manager berhasil dimuat.")
 
         # Pyrogram schedules add_handler() asynchronously. Flush those tasks
         # before idle() so incoming updates cannot arrive without handlers.
@@ -130,7 +128,7 @@ def main() -> None:
             raise RuntimeError("Tidak ada handler Pyrogram yang terdaftar.")
 
         client.loop.run_until_complete(start_all_supervisors())
-        log.info("✓ Bot siap menerima pesan.")
+        log.info("✓ Bot siap menerima update Telegram.")
         idle()
     finally:
         if started:
