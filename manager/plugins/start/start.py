@@ -32,10 +32,15 @@ def home_keyboard() -> InlineKeyboardMarkup:
 
 
 def setup(client):
-    @client.on_message(filters.command("start") & filters.private)
+    @client.on_message(filters.command("start") & filters.private, group=-100)
     @safe_handler
     async def start_handler(client, message):
         user = message.from_user
+        log.info(
+            "Menerima /start dari user %s dalam chat %s.",
+            user.id if user else "unknown",
+            message.chat.id if message.chat else "unknown",
+        )
         get_or_create_user(user.id, user.username, full_name(user))
         await message.reply(welcome_text(), reply_markup=main_keyboard(user.id))
 

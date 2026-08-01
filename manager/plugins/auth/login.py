@@ -321,7 +321,10 @@ def setup(client):
                 reply_markup=home_keyboard(),
             )
 
-    @client.on_message(filters.private & filters.incoming)
+    # Keep this after the general menu handlers. The filter is intentionally
+    # broad because it handles phone/OTP/password stages, but it must not
+    # consume /start when no login session is active.
+    @client.on_message(filters.private & filters.incoming, group=1)
     @safe_handler
     async def login_message_handler(client, message):
         if not message.from_user:

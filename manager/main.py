@@ -92,7 +92,13 @@ def main() -> None:
             )
             raise RuntimeError("Koneksi Manager Bot ke Telegram timeout.") from exc
         started = True
-        set_manager_bot_id(client.get_me().id)
+        bot_identity = client.get_me()
+        set_manager_bot_id(bot_identity.id)
+        log.info(
+            "✓ Terhubung sebagai @%s (ID %s).",
+            bot_identity.username or "(tanpa username)",
+            bot_identity.id,
+        )
         log.info("✓ Login berhasil.")
 
         stats = load_plugins(client)
