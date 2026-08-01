@@ -328,7 +328,7 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
     username = f"@{user.username}" if user.username else "N/A"
     stat_label = "KETAMPANAN" if card_type == "male" else "KECANTIKAN"
     card_title = "ID CARD"
-    badge = "2ND GENERATION" if card_type == "male" else "NEON EDITION"
+    badge = "IBEKS MALE" if card_type == "male" else "IBEKS FEMALE"
 
     image = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), palette["background"] + (255,))
     draw = ImageDraw.Draw(image)
@@ -344,12 +344,16 @@ async def generate_fun_card(client: Client, user: User, card_type: str) -> io.By
     _text(draw, (70, 57), card_title, font_header, palette["text"])
     draw.line([(190, 68), (330, 68)], fill=palette["text"], width=4)
     draw.line([(205, 81), (315, 81)], fill=palette["text"], width=2)
-    _text(draw, (530, 48), "I  P  S  T  O  R  E", font_header, palette["text"])
-    _text(draw, (1060, 55), "DIAMOND X", font_small, palette["text"])
-    draw.ellipse([1015, 55, 1040, 80], outline=palette["accent"], width=3)
-    draw.line([(1018, 68), (1037, 68)], fill=palette["accent"], width=2)
+    _text(draw, (500, 48), "I  B  E  K  S   U  S  E  R  B  O  T", font_header, palette["text"])
+    _text(draw, (1035, 55), "OFFICIAL ID", font_small, palette["text"])
+    draw.polygon(
+        [(995, 68), (1008, 55), (1021, 68), (1008, 81)],
+        outline=palette["accent"],
+        fill=None,
+    )
+    draw.line([(1002, 68), (1014, 68)], fill=palette["accent"], width=2)
 
-    _text(draw, (70, 132), "TRAINEE", _font("DejaVuSans-Bold.ttf", 31), palette["accent"])
+    _text(draw, (70, 132), "IBEKS PROFILE", _font("DejaVuSans-Bold.ttf", 31), palette["accent"])
     draw.line([(245, 148), (375, 148)], fill=palette["text"], width=4)
     draw.line([(260, 160), (350, 160)], fill=palette["text"], width=2)
     draw.rounded_rectangle([405, 124, 625, 162], radius=19, fill=palette["accent"])
