@@ -30,11 +30,25 @@ def init_db() -> None:
                 username TEXT,
                 full_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Belum Aktif',
+                phone_number TEXT,
+                session_string TEXT,
+                login_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """
         )
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(users)").fetchall()
+        }
+        for column, definition in {
+            "phone_number": "TEXT",
+            "session_string": "TEXT",
+            "login_at": "TEXT",
+        }.items():
+            if column not in columns:
+                connection.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
         connection.commit()
 
 
@@ -42,7 +56,8 @@ def get_user(telegram_id: int) -> dict | None:
     """Ambil satu user berdasarkan Telegram ID."""
     with _connect() as connection:
         row = connection.execute(
-            "SELECT telegram_id, username, full_name, status, created_at, updated_at "
+            "SELECT telegram_id, username, full_name, status, phone_number, "
+            "session_string, login_at, created_at, updated_at "
             "FROM users WHERE telegram_id = ?",
             (telegram_id,),
         ).fetchone()
@@ -78,3 +93,38 @@ def get_or_create_user(
         )
         connection.commit()
     return get_user(telegram_id) or {}
+
+
+def save_login(
+    telegram_id: int,
+    phone_number: str,
+    session_string: str,
+    username: str | None,
+    full_name: str,
+) -> None:
+    """Simpan hasil login tanpa pernah mengembalikan session ke pengguna."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET username = ?,
+                full_name = ?,
+                phone_number = ?,
+                session_string = ?,
+                login_at = ?,
+                status = 'Aktif',
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (
+                username,
+                full_name,
+                phone_number,
+                session_string,
+                timestamp,
+                timestamp,
+                telegram_id,
+            ),
+        )
+        connection.commit()

@@ -32,8 +32,9 @@ def account_text(user_data: dict) -> str:
         f"• Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"• Username : {display_username(user_data.get('username'))}\n"
         f"• Telegram ID : `{user_data.get('telegram_id')}`\n"
+        f"• Nomor : {user_data.get('phone_number') or 'Belum tersedia'}\n"
         f"• Status : {status_line}\n"
-        f"• Tanggal Bergabung : {display_date(user_data.get('created_at'))}"
+        f"• Tanggal Login : {display_date(user_data.get('login_at'))}"
     )
 
 
@@ -46,7 +47,7 @@ def guide_text() -> str:
         "📖 **Panduan IBEKS USERBOT**\n\n"
         "Gunakan menu Manager Bot untuk mengelola akun dan akses layanan "
         "IBEKS USERBOT. Ikuti instruksi pada setiap menu yang tersedia.\n\n"
-        "Fitur login dan pengelolaan Userbot akan tersedia pada tahap berikutnya."
+        "Gunakan tombol 📲 Minta Akses untuk memulai proses akses layanan."
     )
 
 

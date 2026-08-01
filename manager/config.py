@@ -20,3 +20,4 @@ API_ID = int(os.environ.get("API_ID", "0") or 0)
 API_HASH = os.environ.get("API_HASH", "")
 BOT_NAME = "IBEKS MANAGER BOT"
 VERSION = "1.0.0"
+LOGIN_TIMEOUT_SECONDS = 300

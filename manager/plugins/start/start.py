@@ -37,7 +37,7 @@ def setup(client):
         get_or_create_user(user.id, user.username, full_name(user))
         await message.reply(welcome_text(), reply_markup=main_keyboard())
 
-    @client.on_callback_query(filters.regex(r"^manager:(home|request|help)$"))
+    @client.on_callback_query(filters.regex(r"^manager:(home|help)$"))
     @safe_handler
     async def start_menu_callback(client, query):
         await query.answer()
@@ -46,11 +46,5 @@ def setup(client):
         action = query.data.rsplit(":", 1)[-1]
         if action == "home":
             await query.message.edit(welcome_text(), reply_markup=main_keyboard())
-        elif action == "request":
-            await query.message.edit(
-                "📲 **Minta Akses**\n\n"
-                "Permintaan akses akan tersedia pada tahap berikutnya.",
-                reply_markup=home_keyboard(),
-            )
         else:
             await query.message.edit(guide_text(), reply_markup=home_keyboard())

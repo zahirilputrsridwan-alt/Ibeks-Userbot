@@ -3,3 +3,4 @@
 - [Fun card visual style](fun-card-visual-style.md) — keep .cardp/.cardw as 1280×720 neon ID cards with large circular photo and reference-style footer.
 - [Clone profile backup](clone-profile-backup.md) — save the latest original profile before clone and restore no-photo profiles by removing the current photo.
 - [IBEKS UI system](ibeks-ui-system.md) — route text-only output through the shared expandable-blockquote fallback; keep media and animation handlers separate.
+- [Manager login sessions](manager-login-sessions.md) — keep each Telegram login in an in-memory per-user state and persist only the resulting session string.
