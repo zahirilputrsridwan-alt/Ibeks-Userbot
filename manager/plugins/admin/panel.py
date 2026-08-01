@@ -16,7 +16,13 @@ from admin import (
     is_owner,
 )
 from database import list_users, log_admin_activity
-from engine import remove_userbot_runtime, stop_userbot
+from engine import (
+    ensure_supervisor,
+    remove_userbot_runtime,
+    resume_supervisor,
+    stop_supervisor,
+    stop_userbot,
+)
 from formatter import display_date, display_username
 from logger import log, safe_handler
 from membership import membership_info
@@ -222,6 +228,8 @@ def setup(client):
                     await message.reply("✅ User disuspend." if changed else "❌ User tidak ditemukan.", reply_markup=panel_keyboard())
             else:
                 changed = admin_activate(admin_id, user_id)
+                if changed:
+                    resume_supervisor(user_id)
                 await message.reply("✅ User diaktifkan." if changed else "❌ User tidak ditemukan.", reply_markup=panel_keyboard())
         elif action == "delete":
             _INPUT_STATES.pop(admin_id, None)
@@ -248,6 +256,7 @@ def setup(client):
         _INPUT_STATES.pop(admin_id, None)
         try:
             expired_at = admin_extend(admin_id, int(user_id), int(days))
+            ensure_supervisor(int(user_id))
             await query.message.edit(
                 f"✅ Membership `{user_id}` diperpanjang {days} hari.\n"
                 f"Berakhir: {display_date(expired_at)}",
@@ -273,6 +282,7 @@ def setup(client):
             await query.message.edit("✅ Penghapusan dibatalkan.", reply_markup=panel_keyboard())
             return
         await stop_userbot(user_id_int)
+        await stop_supervisor(user_id_int)
         deleted = admin_delete(admin_id, user_id_int)
         if deleted:
             remove_userbot_runtime(user_id_int)

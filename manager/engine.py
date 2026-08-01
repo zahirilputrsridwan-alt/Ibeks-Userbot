@@ -10,9 +10,17 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from config import USERBOT_DIR, USERBOT_MAIN, USERBOT_RUNTIME_DIR
-from database import get_user, set_userbot_identity, update_userbot_state
+from config import (
+    USERBOT_DIR,
+    USERBOT_MAIN,
+    USERBOT_MONITOR_INTERVAL_SECONDS,
+    USERBOT_RECONNECT_INITIAL_SECONDS,
+    USERBOT_RECONNECT_MAX_SECONDS,
+    USERBOT_RUNTIME_DIR,
+)
+from database import get_user, list_logged_in_users, set_userbot_identity, update_userbot_state
 from logger import log
+from membership import has_active_membership
 
 ONLINE = "🟢 Online"
 OFFLINE = "🔴 Offline"
@@ -28,6 +36,9 @@ _ready_errors: dict[int, str] = {}
 _recent_output: dict[int, list[str]] = {}
 _ready_parts: dict[int, set[str]] = {}
 _intentional_stops: set[int] = set()
+_manual_stops: set[int] = set()
+_supervisors: dict[int, asyncio.Task] = {}
+_supervisor_stop = asyncio.Event()
 _manager_bot_id: int = 0
 _USERBOT_ID_RE = re.compile(r"User ID\s*:\s*(\d+)")
 _MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
@@ -96,6 +107,10 @@ def status_for(user_id: int) -> str:
     return ONLINE if is_running(user_id) else OFFLINE
 
 
+def _supervisor_is_stopping() -> bool:
+    return _supervisor_stop.is_set()
+
+
 def remove_userbot_runtime(user_id: int) -> None:
     """Hapus runtime terisolasi setelah user berhasil dihapus."""
     path = USERBOT_RUNTIME_DIR / str(user_id)
@@ -158,8 +173,114 @@ async def _watch_process(user_id: int, process: asyncio.subprocess.Process) -> N
 
 async def start_userbot(user_id: int) -> tuple[bool, str]:
     """Mulai proses Userbot dan tunggu sampai login Pyrogram berhasil."""
+    _manual_stops.discard(user_id)
     async with _locks[user_id]:
         return await _start_userbot_locked(user_id)
+
+
+async def _ensure_stopped_for_access(user_id: int, reason: str) -> None:
+    """Hentikan Userbot jika aksesnya tidak lagi valid."""
+    if is_running(user_id):
+        async with _locks[user_id]:
+            if is_running(user_id):
+                await _terminate_process(user_id)
+    update_userbot_state(user_id, OFFLINE, last_stop=_timestamp())
+    log.info("Userbot %s dihentikan otomatis: %s", user_id, reason)
+
+
+async def _supervise_user(user_id: int) -> None:
+    """Monitor satu user dan reconnect setelah crash dengan exponential backoff."""
+    delay = USERBOT_RECONNECT_INITIAL_SECONDS
+    while not _supervisor_is_stopping():
+        if user_id in _manual_stops:
+            log.info("Supervisor Userbot %s menunggu Start manual.", user_id)
+            return
+        user = get_user(user_id)
+        if not user or not user.get("session_string"):
+            return
+        if user.get("suspended"):
+            await _ensure_stopped_for_access(user_id, "akun disuspend")
+            return
+        if not has_active_membership(user):
+            await _ensure_stopped_for_access(user_id, "Membership expired")
+            return
+        if is_running(user_id):
+            delay = USERBOT_RECONNECT_INITIAL_SECONDS
+            try:
+                await asyncio.wait_for(
+                    _supervisor_stop.wait(),
+                    timeout=USERBOT_MONITOR_INTERVAL_SECONDS,
+                )
+            except asyncio.TimeoutError:
+                continue
+            return
+
+        success, result = await start_userbot(user_id)
+        if success:
+            delay = USERBOT_RECONNECT_INITIAL_SECONDS
+            continue
+        if _supervisor_is_stopping():
+            return
+        log.warning(
+            "Auto-reconnect Userbot %s gagal: %s. Coba lagi dalam %ss.",
+            user_id,
+            result,
+            delay,
+        )
+        try:
+            await asyncio.wait_for(_supervisor_stop.wait(), timeout=delay)
+        except asyncio.TimeoutError:
+            delay = min(delay * 2, USERBOT_RECONNECT_MAX_SECONDS)
+
+
+def ensure_supervisor(user_id: int) -> None:
+    """Pastikan satu supervisor saja mengelola satu user."""
+    task = _supervisors.get(user_id)
+    if task and not task.done():
+        return
+    _supervisors[user_id] = asyncio.create_task(
+        _supervise_user(user_id),
+        name=f"userbot-supervisor-{user_id}",
+    )
+
+
+def resume_supervisor(user_id: int) -> None:
+    """Lanjutkan monitoring setelah akses user diaktifkan kembali."""
+    _manual_stops.discard(user_id)
+    ensure_supervisor(user_id)
+
+
+async def start_all_supervisors() -> None:
+    """Mulai monitoring untuk seluruh user yang sudah login."""
+    _supervisor_stop.clear()
+    for user in list_logged_in_users():
+        ensure_supervisor(user["telegram_id"])
+    log.info("Supervisor Userbot aktif untuk %s user.", len(_supervisors))
+
+
+async def stop_supervisor(user_id: int) -> None:
+    """Hentikan supervisor satu user tanpa mematikan akun lain."""
+    task = _supervisors.pop(user_id, None)
+    if not task:
+        return
+    if not task.done():
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+
+async def stop_all_supervisors() -> None:
+    """Hentikan seluruh task monitoring."""
+    _supervisor_stop.set()
+    tasks = list(_supervisors.values())
+    _supervisors.clear()
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
 
 
 async def _start_userbot_locked(user_id: int) -> tuple[bool, str]:
@@ -169,6 +290,8 @@ async def _start_userbot_locked(user_id: int) -> tuple[bool, str]:
         return False, "Akun Telegram belum login."
     if user.get("suspended"):
         return False, "User sedang disuspend oleh Admin."
+    if not has_active_membership(user):
+        return False, "Membership Anda telah berakhir. Silakan hubungi Admin."
     if is_running(user_id):
         update_userbot_state(user_id, ONLINE)
         return True, "Userbot sudah berjalan."
@@ -231,6 +354,7 @@ async def _terminate_process(user_id: int) -> None:
 
 async def stop_userbot(user_id: int) -> tuple[bool, str]:
     """Hentikan proses Userbot milik user."""
+    _manual_stops.add(user_id)
     async with _locks[user_id]:
         return await _stop_userbot_locked(user_id)
 
@@ -248,6 +372,7 @@ async def _stop_userbot_locked(user_id: int) -> tuple[bool, str]:
 
 async def restart_userbot(user_id: int) -> tuple[bool, str]:
     """Hentikan lalu mulai kembali proses Userbot."""
+    _manual_stops.discard(user_id)
     async with _locks[user_id]:
         if is_running(user_id):
             await _stop_userbot_locked(user_id)

@@ -98,3 +98,21 @@ melihat dan membuka tombol `🛠 Admin Panel`. Panel menyediakan:
 Semua operasi Admin dan percobaan akses non-Owner dicatat pada tabel audit
 SQLite `admin_logs`. Penghapusan user juga membersihkan runtime Userbot
 terisolasinya.
+
+## Deployment & Automation
+
+Manager Bot menjalankan supervisor ringan untuk setiap user yang sudah login:
+
+- Userbot otomatis dimulai setelah login berhasil dan saat Manager Bot startup.
+- Proses yang crash dipantau dan dicoba reconnect dengan exponential backoff.
+- Membership `Expired` atau akun yang disuspend menghentikan Userbot otomatis.
+- Status `Starting`, `Online`, dan `Offline` disimpan ke SQLite.
+- Satu `asyncio.Lock` dan satu supervisor menjaga agar satu user hanya memiliki
+  satu proses Userbot aktif.
+- Semua proses child dihentikan saat Manager Bot shutdown.
+- Aktivitas lifecycle dan output child dicatat ke `manager/logs/manager.log`;
+  runtime Userbot tetap terisolasi per pengguna.
+
+Interval monitoring dan batas reconnect dikonfigurasi melalui
+`USERBOT_MONITOR_INTERVAL_SECONDS`, `USERBOT_RECONNECT_INITIAL_SECONDS`, dan
+`USERBOT_RECONNECT_MAX_SECONDS`.

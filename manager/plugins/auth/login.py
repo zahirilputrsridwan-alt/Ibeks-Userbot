@@ -26,7 +26,7 @@ from pyrogram.types import (
 
 from config import API_HASH, API_ID, LOGIN_TIMEOUT_SECONDS
 from database import get_or_create_user, save_login
-from engine import start_userbot, stop_userbot
+from engine import ensure_supervisor, start_userbot, stop_userbot
 from formatter import full_name
 from logger import log, safe_handler
 from membership import ensure_login_membership
@@ -218,6 +218,7 @@ async def _finish_login(message, state: LoginState, logged_user) -> None:
     ensure_login_membership(message.from_user.id)
     await _remove_state(message.from_user.id)
     started, start_result = await start_userbot(message.from_user.id)
+    ensure_supervisor(message.from_user.id)
     if started:
         result = "✅ Login Telegram berhasil.\n\n🟢 Userbot berhasil online."
     else:

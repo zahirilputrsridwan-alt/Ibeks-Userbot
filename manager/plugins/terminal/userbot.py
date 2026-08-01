@@ -10,6 +10,7 @@ from engine import (
     OFFLINE,
     ONLINE,
     STOPPED,
+    ensure_supervisor,
     restart_userbot,
     start_userbot,
     stop_userbot,
@@ -70,10 +71,12 @@ def setup(client):
         action = query.data.rsplit("_", 1)[-1]
         if action == "start":
             success, result = await start_userbot(user_id)
+            ensure_supervisor(user_id)
         elif action == "stop":
             success, result = await stop_userbot(user_id)
         elif action == "restart":
             success, result = await restart_userbot(user_id)
+            ensure_supervisor(user_id)
         else:
             user = get_user(user_id)
             if not user:

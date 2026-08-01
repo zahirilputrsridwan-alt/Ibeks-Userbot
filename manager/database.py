@@ -313,3 +313,17 @@ def update_userbot_state(
             values,
         )
         connection.commit()
+
+
+def list_logged_in_users() -> list[dict]:
+    """Ambil user yang memiliki session untuk kebutuhan supervisor."""
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT telegram_id, username, full_name, status, phone_number, "
+            "session_string, userbot_telegram_id, login_at, membership_expired_at, "
+            "suspended, userbot_status, last_start, last_stop, last_restart, "
+            "created_at, updated_at "
+            "FROM users WHERE session_string IS NOT NULL AND session_string != '' "
+            "ORDER BY telegram_id"
+        ).fetchall()
+    return [dict(row) for row in rows]
