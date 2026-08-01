@@ -33,15 +33,7 @@ def setup(client):
             from utils.logger import log
             log.warning(f"[Restart] Gagal menyimpan state restart: {exc}")
 
-        await send_ui(
-            client,
-            chat_id,
-            "Userbot sedang direstart...",
-            "RESTART",
-            "CORE",
-            "LOADING",
-            expandable=True,
-        )
+        await send_ui(client, chat_id, "🔄 Userbot sedang direstart...", expandable=True)
 
         # Ganti proses saat ini dengan instance baru dari main.py
         try:
@@ -49,4 +41,4 @@ def setup(client):
         except Exception as exc:
             from utils.logger import log
             log.exception(f"[Restart] Gagal restart: {exc}")
-            await send_ui(client, chat_id, "Gagal merestart userbot.", "RESTART", "CORE", "ERROR", expandable=True)
+            await send_ui(client, chat_id, "❌ Gagal merestart userbot.", expandable=True)

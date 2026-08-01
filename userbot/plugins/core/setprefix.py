@@ -10,6 +10,7 @@ from pyrogram import filters
 
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
+from utils.formatter import format_status
 from utils.filters import dynamic_command
 from utils.prefix_manager import set_prefix, is_valid_prefix
 from plugins.utils.ui import send_ui
@@ -29,13 +30,28 @@ def setup(client):
         # Ambil prefix baru dari command
         parts = text.split(maxsplit=1)
         if len(parts) < 2:
-            await send_ui(client, chat_id, "Gunakan: `.setprefix <prefix>`", "SETPREFIX", "CORE", "ERROR", expandable=True)
+            await send_ui(
+                client,
+                chat_id,
+                format_status(False, "Gunakan: `.setprefix <prefix>`"),
+                expandable=True,
+            )
             return
 
         new_prefix = parts[1].strip()
         if not is_valid_prefix(new_prefix):
-            await send_ui(client, chat_id, "Prefix tidak valid. Maksimal 4 karakter non-spasi.", "SETPREFIX", "CORE", "ERROR", expandable=True)
+            await send_ui(
+                client,
+                chat_id,
+                format_status(False, "Prefix tidak valid. Maksimal 4 karakter non-spasi."),
+                expandable=True,
+            )
             return
 
         set_prefix(new_prefix)
-        await send_ui(client, chat_id, f"Prefix berhasil diubah menjadi `{new_prefix}`", "SETPREFIX", "CORE", "SUCCESS", expandable=True)
+        await send_ui(
+            client,
+            chat_id,
+            format_status(True, f"Prefix berhasil diubah menjadi `{new_prefix}`"),
+            expandable=True,
+        )

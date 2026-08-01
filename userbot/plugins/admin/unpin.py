@@ -26,7 +26,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "UNPIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_pin_messages")
@@ -37,10 +37,10 @@ def setup(client):
         try:
             if message.reply_to_message:
                 await client.unpin_chat_message(chat.id, message.reply_to_message.id)
-                await send_ui(client, chat.id, "Pesan berhasil diunpin.", "UNPIN", "ADMIN", "SUCCESS", expandable=True)
+                await send_ui(client, chat.id, "✅ Pesan berhasil diunpin.", expandable=True)
             else:
                 await client.unpin_all_chat_messages(chat.id)
-                await send_ui(client, chat.id, "Semua pin berhasil dilepas.", "UNPIN", "ADMIN", "SUCCESS", expandable=True)
+                await send_ui(client, chat.id, "✅ Semua pin berhasil dilepas.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Unpin] Gagal unpin pesan: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "UNPIN", "ADMIN", "ERROR", expandable=True)

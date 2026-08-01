@@ -28,7 +28,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "BAN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_restrict_members")
@@ -38,16 +38,16 @@ def setup(client):
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await send_ui(client, chat.id, "Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", "BAN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", expandable=True)
             return
 
         if await is_self_target_async(client, target_id):
-            await send_ui(client, chat.id, "Tidak bisa banned diri sendiri.", "BAN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Tidak bisa banned diri sendiri.", expandable=True)
             return
 
         try:
             await client.ban_chat_member(chat.id, target_id)
-            await send_ui(client, chat.id, "User berhasil dibanned dari grup.", "BAN", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, "✅ User berhasil dibanned dari grup.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Ban] Gagal ban user {target_id}: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "BAN", "ADMIN", "ERROR", expandable=True)

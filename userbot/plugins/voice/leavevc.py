@@ -24,4 +24,4 @@ def setup(client):
         chat_id = message.chat.id
 
         success, text = await voice_manager.leave(chat_id)
-        await send_ui(client, chat_id, text, "VOICE", "VOICE", "INFO", expandable=True)
+        await send_ui(client, chat_id, text, expandable=True)

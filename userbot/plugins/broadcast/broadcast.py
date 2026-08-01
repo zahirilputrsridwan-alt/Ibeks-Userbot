@@ -15,6 +15,7 @@ from pyrogram import filters
 from config import AUTO_DELETE_CMD
 from db import add_blacklist, del_blacklist, is_blacklisted, list_blacklist
 from utils.autodelete import auto_delete
+from utils.formatter import format_status
 from utils.filters import dynamic_command
 from utils.broadcast import broadcast_gcast, broadcast_ucast, format_broadcast_result
 from plugins.utils.ui import send_ui
@@ -38,22 +39,19 @@ def setup(client):
         else:
             parts = (message.text or message.caption or "").split(maxsplit=1)
             if len(parts) < 2:
-                await send_ui(client, chat_id, "Gunakan `.gcast <pesan>` atau reply pesan.", "GCAST", "BROADCAST", "ERROR", expandable=True)
+                await send_ui(
+                    client,
+                    chat_id,
+                    format_status(False, "Gunakan `.gcast <pesan>` atau reply pesan."),
+                    expandable=True,
+                )
                 return
             text = parts[1]
             source = None
 
-        await send_ui(
-            client,
-            chat_id,
-            "GCAST sedang berjalan...",
-            "GCAST",
-            "BROADCAST",
-            "LOADING",
-            expandable=True,
-        )
+        await send_ui(client, chat_id, "🔄 GCAST sedang berjalan...", expandable=True)
         result = await broadcast_gcast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("gcast", result), "GCAST SUCCESS", "BROADCAST", "SUCCESS", expandable=True)
+        await send_ui(client, chat_id, format_broadcast_result("gcast", result), expandable=True)
 
     @client.on_message(dynamic_command("ucast") & filters.me)
     async def cmd_ucast(client, message):
@@ -69,22 +67,19 @@ def setup(client):
         else:
             parts = (message.text or message.caption or "").split(maxsplit=1)
             if len(parts) < 2:
-                await send_ui(client, chat_id, "Gunakan `.ucast <pesan>` atau reply pesan.", "UCAST", "BROADCAST", "ERROR", expandable=True)
+                await send_ui(
+                    client,
+                    chat_id,
+                    format_status(False, "Gunakan `.ucast <pesan>` atau reply pesan."),
+                    expandable=True,
+                )
                 return
             text = parts[1]
             source = None
 
-        await send_ui(
-            client,
-            chat_id,
-            "UCAST sedang berjalan...",
-            "UCAST",
-            "BROADCAST",
-            "LOADING",
-            expandable=True,
-        )
+        await send_ui(client, chat_id, "🔄 UCAST sedang berjalan...", expandable=True)
         result = await broadcast_ucast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("ucast", result), "UCAST SUCCESS", "BROADCAST", "SUCCESS", expandable=True)
+        await send_ui(client, chat_id, format_broadcast_result("ucast", result), expandable=True)
 
     @client.on_message(dynamic_command("addbl") & filters.me)
     async def cmd_addbl(client, message):
@@ -95,11 +90,11 @@ def setup(client):
         chat_title = message.chat.title or message.chat.first_name or "Unknown"
 
         if is_blacklisted(chat_id):
-            await send_ui(client, chat_id, "Chat sudah ada di Blacklist.", "BLACKLIST", "BROADCAST", "ERROR", expandable=True)
+            await send_ui(client, chat_id, format_status(False, "Chat sudah ada di Blacklist."), expandable=True)
             return
 
         add_blacklist(chat_id, chat_title)
-        await send_ui(client, chat_id, "Grup berhasil ditambahkan ke Blacklist.", "BLACKLIST", "BROADCAST", "SUCCESS", expandable=True)
+        await send_ui(client, chat_id, format_status(True, "Grup berhasil ditambahkan ke Blacklist."), expandable=True)
 
     @client.on_message(dynamic_command("delbl") & filters.me)
     async def cmd_delbl(client, message):
@@ -108,9 +103,9 @@ def setup(client):
 
         chat_id = message.chat.id
         if del_blacklist(chat_id):
-            await send_ui(client, chat_id, "Grup berhasil dihapus dari Blacklist.", "BLACKLIST", "BROADCAST", "SUCCESS", expandable=True)
+            await send_ui(client, chat_id, format_status(True, "Grup berhasil dihapus dari Blacklist."), expandable=True)
         else:
-            await send_ui(client, chat_id, "Chat tidak ditemukan di Blacklist.", "BLACKLIST", "BROADCAST", "ERROR", expandable=True)
+            await send_ui(client, chat_id, format_status(False, "Chat tidak ditemukan di Blacklist."), expandable=True)
 
     @client.on_message(dynamic_command("listbl") & filters.me)
     async def cmd_listbl(client, message):
@@ -120,7 +115,7 @@ def setup(client):
         chat_id = message.chat.id
         items = list_blacklist()
         if not items:
-            await send_ui(client, chat_id, "Tidak ada blacklist.", "BLACKLIST", "BROADCAST", "INFO", expandable=True)
+            await send_ui(client, chat_id, "Tidak ada blacklist.", expandable=True)
             return
 
         lines = ["📋 BLACKLIST", ""]
@@ -129,4 +124,4 @@ def setup(client):
             lines.append(item["chat_title"] or "Unknown")
             lines.append(f"`{item['chat_id']}`")
             lines.append("")
-        await send_ui(client, chat_id, "\n".join(lines), "BLACKLIST", "BROADCAST", "INFO", expandable=True)
+        await send_ui(client, chat_id, "\n".join(lines), expandable=True)

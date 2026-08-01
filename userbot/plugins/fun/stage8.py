@@ -183,7 +183,7 @@ def setup(client):
 
     async def _get_reply_target(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await send_ui(client, message.chat.id, "REPLY DULU NYET...", "STAGE 8", "FUN", "ERROR", expandable=True)
+            await send_ui(client, message.chat.id, "😡 REPLY DULU NYET...", expandable=True)
             return None
         return message.reply_to_message.from_user
 
@@ -192,27 +192,11 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _get_reply_target(message)
         if target:
-            await send_ui(
-                client,
-                message.chat.id,
-                _ctitit_report(target),
-                "CEK TITIT",
-                "FUN",
-                "INFO",
-                expandable=True,
-            )
+            await send_ui(client, message.chat.id, _ctitit_report(target), expandable=True)
 
     @client.on_message(dynamic_command("cmeki") & filters.me)
     async def cmd_cmeki(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _get_reply_target(message)
         if target:
-            await send_ui(
-                client,
-                message.chat.id,
-                _cmeki_report(target),
-                "CEK MEMEK",
-                "FUN",
-                "INFO",
-                expandable=True,
-            )
+            await send_ui(client, message.chat.id, _cmeki_report(target), expandable=True)

@@ -23,7 +23,7 @@ def setup(client):
         chat_id = message.chat.id
 
         success, text = await voice_manager.join(chat_id)
-        result = await send_ui(client, chat_id, text, "VOICE", "VOICE", "INFO", expandable=True)
+        result = await send_ui(client, chat_id, text, expandable=True)
 
         # Hapus command dan hasilnya setelah jeda
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))

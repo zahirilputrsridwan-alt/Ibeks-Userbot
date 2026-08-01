@@ -27,7 +27,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "PURGE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_delete_messages")
@@ -36,19 +36,19 @@ def setup(client):
             return
 
         if not message.reply_to_message:
-            await send_ui(client, chat.id, "Reply ke pesan paling awal yang ingin dihapus.", "PURGE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Reply ke pesan paling awal yang ingin dihapus.", expandable=True)
             return
 
         start_id = message.reply_to_message.id
         end_id = message.id
         if start_id > end_id:
-            await send_ui(client, chat.id, "Rentang pesan tidak valid.", "PURGE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Rentang pesan tidak valid.", expandable=True)
             return
 
         try:
             message_ids = list(range(start_id, end_id + 1))
             await client.delete_messages(chat.id, message_ids)
-            await send_ui(client, chat.id, f"Berhasil menghapus {len(message_ids)} pesan.", "PURGE", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, f"✅ Berhasil menghapus {len(message_ids)} pesan.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Purge] Gagal purge pesan: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "PURGE", "ADMIN", "ERROR", expandable=True)

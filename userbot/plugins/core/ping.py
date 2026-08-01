@@ -35,15 +35,7 @@ def setup(client):
 
         # Ukur ping lokal (waktu kirim pesan "loading")
         t_start = time.monotonic()
-        sent = await send_ui(
-            client,
-            chat_id,
-            "Mengukur ping...",
-            "PING",
-            "CORE",
-            "LOADING",
-            expandable=True,
-        )
+        sent = await send_ui(client, chat_id, "🏓 Mengukur ping...", expandable=True)
         ping_ms = round((time.monotonic() - t_start) * 1000, 2)
 
         # Ukur API ping via get_me()
@@ -59,28 +51,26 @@ def setup(client):
         cpu = get_cpu_usage()
         uptime = format_uptime()
 
-        body = "\n".join(
-            [
-                f"🏓 Ping : `{ping_ms} ms`",
-                f"⚡ API Ping : `{api_ping_ms} ms`",
-                f"⏰ Uptime : `{uptime}`",
-                f"💾 RAM : `{ram}%`",
-                f"🖥 CPU : `{cpu}%`",
-                "",
-                f"👤 Owner : `{owner}`",
-                f"🤖 {BOT_NAME}",
-                f"📦 Version : `{VERSION}`",
-            ]
+        text = (
+            "╭━━━━━━━━━━━━━━━━━━━━━━╮\n"
+            "        💀 INFO STATUS\n"
+            "╰━━━━━━━━━━━━━━━━━━━━━━╯\n"
+            "\n"
+            f"🏓 **Ping**      : `{ping_ms} ms`\n"
+            f"⚡ **API Ping**  : `{api_ping_ms} ms`\n"
+            f"⏰ **Uptime**    : `{uptime}`\n"
+            f"💾 **RAM**       : `{ram}%`\n"
+            f"🖥 **CPU**       : `{cpu}%`\n"
+            "\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "\n"
+            f"👤 **Owner**     : `{owner}`\n"
+            f"🤖 **{BOT_NAME}**\n"
+            f"📦 **Version**   : `{VERSION}`\n"
+            "\n"
+            "╰━━━━━━━━━━━━━━━━━━━━━━╯"
         )
         try:
-            await sent.edit_text(
-                "🔄 PING\n\nMengukur hasil akhir...",
-                parse_mode=None,
-            )
+            await sent.edit(text)
         except Exception:
             pass
-        try:
-            await sent.delete()
-        except Exception:
-            pass
-        await send_ui(client, message.chat.id, body, "INFO STATUS", "CORE", "INFO", expandable=True)

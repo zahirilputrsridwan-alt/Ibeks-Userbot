@@ -33,7 +33,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "MUTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_restrict_members")
@@ -43,11 +43,11 @@ def setup(client):
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await send_ui(client, chat.id, "Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", "MUTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", expandable=True)
             return
 
         if await is_self_target_async(client, target_id):
-            await send_ui(client, chat.id, "Tidak bisa mute diri sendiri.", "MUTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Tidak bisa mute diri sendiri.", expandable=True)
             return
 
         # Parse durasi dari seluruh argumen setelah command
@@ -76,7 +76,7 @@ def setup(client):
                 until_date=until_date(duration),
             )
             dur_text = format_duration(duration)
-            await send_ui(client, chat.id, f"User berhasil dimute selama {dur_text}.", "MUTE", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, f"✅ User berhasil dimute selama {dur_text}.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Mute] Gagal mute user {target_id}: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "MUTE", "ADMIN", "ERROR", expandable=True)

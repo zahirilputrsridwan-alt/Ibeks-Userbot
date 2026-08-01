@@ -27,7 +27,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "UNBAN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_restrict_members")
@@ -37,12 +37,12 @@ def setup(client):
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await send_ui(client, chat.id, "Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", "UNBAN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", expandable=True)
             return
 
         try:
             await client.unban_chat_member(chat.id, target_id)
-            await send_ui(client, chat.id, "User berhasil diunban.", "UNBAN", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, "✅ User berhasil diunban.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Unban] Gagal unban user {target_id}: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "UNBAN", "ADMIN", "ERROR", expandable=True)

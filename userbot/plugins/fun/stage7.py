@@ -168,7 +168,7 @@ def setup(client):
 
     async def _target_or_prompt(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await send_ui(client, message.chat.id, "REPLY DULU NYET...", "STAGE 7", "FUN", "ERROR", expandable=True)
+            await send_ui(client, message.chat.id, "😡 REPLY DULU NYET...", expandable=True)
             return None
         return message.reply_to_message.from_user
 
@@ -177,27 +177,11 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _target_or_prompt(message)
         if target:
-            await send_ui(
-                client,
-                message.chat.id,
-                _report_cnenen(target),
-                "CEK NENEN",
-                "FUN",
-                "INFO",
-                expandable=True,
-            )
+            await send_ui(client, message.chat.id, _report_cnenen(target), expandable=True)
 
     @client.on_message(dynamic_command("cange") & filters.me)
     async def cmd_cange(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         target = await _target_or_prompt(message)
         if target:
-            await send_ui(
-                client,
-                message.chat.id,
-                _report_cange(target),
-                "CEK SANGE",
-                "FUN",
-                "INFO",
-                expandable=True,
-            )
+            await send_ui(client, message.chat.id, _report_cange(target), expandable=True)

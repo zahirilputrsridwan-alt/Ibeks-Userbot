@@ -30,13 +30,25 @@ def setup(client):
         target_user = message.reply_to_message.from_user if message.reply_to_message else message.from_user
 
         if not target_user:
-            await send_ui(client, chat_id, "Tidak dapat menemukan target user.", "CEK TAMPAN", "FUN", "ERROR", expandable=True)
+            await send_ui(client, chat_id, "❌ Tidak dapat menemukan target user.", expandable=True)
             return
 
         name, user_id, progress, aura, outfit, plus, tier = generate_ctampan(target_user)
 
-        body = "\n".join([f"Target : {name}", f"ID : {user_id}", f"Ketampanan : {progress}", f"Aura : {aura}", f"Outfit : {outfit}", f"Plus : {plus}", f"Tier : {tier}"])
-        await send_ui(client, chat_id, body, "CEK TAMPAN", "FUN", "INFO", expandable=True)
+        text = (
+            "✨ CEK TAMPAN — REPORT ✨\n"
+            "━━━━━━ ★ ━━━━━━\n\n"
+            f"👤 Target : `{name}`\n"
+            f"🆔 ID : `{user_id}`\n\n"
+            "📊 Ketampanan\n"
+            f"{progress}\n\n"
+            f"😎 Aura : {aura}\n"
+            f"👕 Outfit : {outfit}\n"
+            f"⭐ Plus : {plus}\n"
+            f"🏆 Tier : {tier}\n\n"
+            "⨱ IBEKS USERBOT ⨱"
+        )
+        await send_ui(client, chat_id, text, expandable=True)
 
     @client.on_message(dynamic_command("ccantik") & filters.me)
     async def cmd_ccantik(client, message):
@@ -47,10 +59,22 @@ def setup(client):
         target_user = message.reply_to_message.from_user if message.reply_to_message else message.from_user
 
         if not target_user:
-            await send_ui(client, chat_id, "Tidak dapat menemukan target user.", "CEK CANTIK", "FUN", "ERROR", expandable=True)
+            await send_ui(client, chat_id, "❌ Tidak dapat menemukan target user.", expandable=True)
             return
 
         name, user_id, progress, aura, outfit, plus, tier = generate_ccantik(target_user)
 
-        body = "\n".join([f"Target : {name}", f"ID : {user_id}", f"Kecantikan : {progress}", f"Aura : {aura}", f"Outfit : {outfit}", f"Plus : {plus}", f"Tier : {tier}"])
-        await send_ui(client, chat_id, body, "CEK CANTIK", "FUN", "INFO", expandable=True)
+        text = (
+            "✨ CEK CANTIK — REPORT ✨\n"
+            "━━━━━━ ★ ━━━━━━\n\n"
+            f"👤 Target : `{name}`\n"
+            f"🆔 ID : `{user_id}`\n\n"
+            "📊 Kecantikan\n"
+            f"{progress}\n\n"
+            f"💖 Aura : {aura}\n"
+            f"👗 Outfit : {outfit}\n"
+            f"⭐ Plus : {plus}\n"
+            f"🏆 Tier : {tier}\n\n"
+            "⨱ IBEKS USERBOT ⨱"
+        )
+        await send_ui(client, chat_id, text, expandable=True)

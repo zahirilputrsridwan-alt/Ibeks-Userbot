@@ -34,15 +34,12 @@ def setup(client):
         python_ver = sys.version.split()[0]
         pyrogram_ver = pyrogram.__version__
 
-        body = "\n".join(
-            [
-                f"🟢 {BOT_NAME}",
-                "",
-                f"Status : `Online`",
-                f"Version : `{VERSION}`",
-                f"Python : `{python_ver}`",
-                f"Pyrogram : `{pyrogram_ver}`",
-                f"Owner : `{owner}`",
-            ]
+        text = (
+            f"🟢 **{BOT_NAME}**\n\n"
+            f"**Status**   : `Online`\n"
+            f"**Version**  : `{VERSION}`\n"
+            f"**Python**   : `{python_ver}`\n"
+            f"**Pyrogram** : `{pyrogram_ver}`\n"
+            f"**Owner**    : `{owner}`"
         )
-        await send_ui(client, message.chat.id, body, "ALIVE", "CORE", "SUCCESS", expandable=True)
+        await send_ui(client, message.chat.id, text, expandable=True)

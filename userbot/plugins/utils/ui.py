@@ -1,99 +1,90 @@
-"""IBEKS USERBOT - UI helpers untuk pesan Telegram."""
+"""Transport helper untuk menambahkan expandable blockquote tanpa mengubah UI."""
 
 from __future__ import annotations
 
-from html import escape
+from io import BytesIO
 from typing import Optional
+
+from pyrogram.parser import Parser
+from pyrogram.parser import utils as parser_utils
+from pyrogram.raw.core import TLObject
+from pyrogram.raw.core.primitives import Int
 
 from utils.logger import log
 
-FOOTER = "⨱ IBEKS USERBOT ⨱"
+
+class _ExpandableBlockquote(TLObject):
+    """Telegram layer 227 blockquote entity with collapsed flag."""
+
+    __slots__ = ["collapsed", "offset", "length"]
+    ID = 0xF1CCAAAC
+    QUALNAME = "types.MessageEntityBlockquote"
+
+    def __init__(self, *, collapsed: bool, offset: int, length: int) -> None:
+        self.collapsed = collapsed
+        self.offset = offset
+        self.length = length
+
+    @staticmethod
+    def read(b: BytesIO, *args):
+        flags = Int.read(b)
+        return _ExpandableBlockquote(
+            collapsed=bool(flags & 1),
+            offset=Int.read(b),
+            length=Int.read(b),
+        )
+
+    def write(self, *args) -> bytes:
+        b = BytesIO()
+        b.write(Int(self.ID, False))
+        b.write(Int(1 if self.collapsed else 0))
+        b.write(Int(self.offset))
+        b.write(Int(self.length))
+        return b.getvalue()
 
 
 def safe_text(text: Optional[str]) -> str:
     return "" if text is None else str(text)
 
 
-def escape_html(text: Optional[str]) -> str:
-    return escape(safe_text(text), quote=False)
+async def send_ui(
+    client,
+    chat_id: int,
+    body: str,
+    title: str = "",
+    category: str = "",
+    status: str = "",
+    expandable: bool = True,
+    **kwargs,
+):
+    """Kirim teks lama dengan blockquote sebagai satu-satunya tambahan UI.
 
+    Argumen title/category/status dipertahankan agar pemanggil lama tetap
+    kompatibel, tetapi sengaja tidak dipakai untuk menyusun ulang teks.
+    """
+    text = safe_text(body)
+    send_kwargs = dict(kwargs)
 
-def build_header(title: str, category: str = "INFO") -> str:
-    return f"╭━━━━━━━━━━━━━━━━━━━━╮\n        {category} | {title}\n╰━━━━━━━━━━━━━━━━━━━━╯"
-
-
-def build_footer() -> str:
-    return FOOTER
-
-
-def build_message(title: str, body: str, category: str = "INFO", status: str = "INFO", expandable: bool = True) -> str:
-    body_html = escape_html(body)
-    return _build_message_html(title, body_html, category=category, expandable=expandable)
-
-
-def _build_message_html(title: str, body_html: str, category: str = "INFO", expandable: bool = True) -> str:
-    parts = [build_header(title, category)]
-    if body_html.strip():
-        parts.append(f"<blockquote{' expandable' if expandable else ''}>\n{body_html}\n</blockquote>")
-    parts.append(build_footer())
-    return "\n\n".join(parts)
-
-
-def build_progress_bar(percent: int, width: int = 10) -> str:
-    percent = max(0, min(100, int(percent)))
-    filled = round(percent / 100 * width)
-    return f"{'▰' * filled}{'▱' * (width - filled)} {percent}%"
-
-
-def _build_report_body(fields: list[tuple[str, str]]) -> str:
-    return "\n".join(f"{escape_html(label)} : <code>{escape_html(value)}</code>" for label, value in fields)
-
-
-def build_report(title: str, fields: list[tuple[str, str]], category: str = "REPORT", status: str = "INFO") -> str:
-    return _build_message_html(
-        title,
-        _build_report_body(fields),
-        category=category,
-        expandable=True,
-    )
-
-
-def build_success(text: str, title: str = "BERHASIL", category: str = "SUCCESS") -> str:
-    return build_message(title, f"✅ {text}", category=category, status="SUCCESS", expandable=True)
-
-
-def build_error(text: str, title: str = "GAGAL", category: str = "ERROR") -> str:
-    return build_message(title, f"❌ {text}", category=category, status="ERROR", expandable=True)
-
-
-def build_warning(text: str, title: str = "PERINGATAN", category: str = "WARNING") -> str:
-    return build_message(title, f"⚠️ {text}", category=category, status="WARNING", expandable=True)
-
-
-def build_loading(text: str, title: str = "MEMPROSES", category: str = "LOADING") -> str:
-    return build_message(title, f"🔄 {text}", category=category, status="LOADING", expandable=True)
-
-
-def _build_plain_text_message(title: str, body: str) -> str:
-    text_body = safe_text(body).strip()
-    return "\n\n".join(part for part in (build_header(title), text_body, build_footer()) if part)
-
-
-async def send_ui(client, chat_id: int, body: str, title: str, category: str, status: str, expandable: bool = True):
-    html_expandable = build_message(title, body, category=category, status=status, expandable=True)
-    html_plain = build_message(title, body, category=category, status=status, expandable=False)
-    plain_text = _build_plain_text_message(title, body)
-    attempts = [
-        (html_expandable if expandable else html_plain, dict(parse_mode="HTML", disable_web_page_preview=True)),
-        (html_plain, dict(parse_mode="HTML", disable_web_page_preview=True)),
-        (plain_text, dict(disable_web_page_preview=True)),
-    ]
-    last_exc = None
-    for text, kwargs in attempts:
+    if expandable and text:
         try:
-            return await client.send_message(chat_id, text, **kwargs)
+            parsed = await Parser(None).parse(text)
+            parsed_text = parsed["message"]
+            entities = list(parsed.get("entities") or [])
+            entities.append(
+                _ExpandableBlockquote(
+                    collapsed=True,
+                    offset=0,
+                    length=len(parser_utils.add_surrogates(parsed_text)),
+                )
+            )
+            return await client.send_message(
+                chat_id,
+                parsed_text,
+                parse_mode=None,
+                entities=entities,
+                **send_kwargs,
+            )
         except Exception as exc:
-            last_exc = exc
-            log.warning("[UI] send_ui gagal (%s): %s", kwargs.get("parse_mode"), exc)
-    if last_exc:
-        raise last_exc
+            log.warning("[UI] Expandable blockquote gagal, kirim UI lama: %s", exc)
+
+    return await client.send_message(chat_id, text, **send_kwargs)

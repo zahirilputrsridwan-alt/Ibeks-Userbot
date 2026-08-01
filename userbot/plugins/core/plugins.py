@@ -33,10 +33,26 @@ def _category_counts(plugin_stats: dict) -> dict[str, int]:
 def _format_plugin_status() -> str:
     stats = get_plugin_stats()
     counts = _category_counts(stats)
-    lines = [f"📦 {BOT_NAME}", "", f"📊 Total Plugin : {len(stats['loaded'])}", ""]
+    lines = [
+        f"📦 {BOT_NAME}",
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "",
+        f"📊 Total Plugin : {len(stats['loaded'])}",
+        "",
+    ]
     for category, count in counts.items():
         lines.append(f"📂 {category} : {count}")
-    lines.extend(["", "Version : 1.0"])
+    lines.extend(
+        [
+            "",
+            "━━━━━━━━━━━━━━━━━━━━",
+            "",
+            "Version : 1.0",
+            "",
+            "━━━━━━━━━━━━━━━━━━━━",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -47,7 +63,7 @@ def setup(client):
     async def cmd_plugins(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         try:
-            await send_ui(client, message.chat.id, _format_plugin_status(), "PLUGIN STATUS", "CORE", "INFO", expandable=True)
+            await send_ui(client, message.chat.id, _format_plugin_status(), expandable=True)
         except Exception:
             from utils.logger import log
 

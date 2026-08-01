@@ -26,7 +26,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "PIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_pin_messages")
@@ -35,7 +35,7 @@ def setup(client):
             return
 
         if not message.reply_to_message:
-            await send_ui(client, chat.id, "Reply ke pesan yang ingin dipin.", "PIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Reply ke pesan yang ingin dipin.", expandable=True)
             return
 
         try:
@@ -44,7 +44,7 @@ def setup(client):
                 message.reply_to_message.id,
                 disable_notification=False,
             )
-            await send_ui(client, chat.id, "Pesan berhasil dipin.", "PIN", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, "✅ Pesan berhasil dipin.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Pin] Gagal pin pesan: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "PIN", "ADMIN", "ERROR", expandable=True)

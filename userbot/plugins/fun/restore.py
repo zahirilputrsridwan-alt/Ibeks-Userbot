@@ -26,7 +26,7 @@ def _telegram_error(exc: Exception) -> str:
 
 async def _notify(client, chat_id: int, text: str) -> None:
     try:
-        await send_ui(client, chat_id, text, "RESTORE", "FUN", "INFO", expandable=True)
+        await send_ui(client, chat_id, text, expandable=True)
     except Exception as exc:
         log.exception("[Restore] Gagal mengirim status ke chat %s: %s", chat_id, exc)
 
@@ -66,7 +66,7 @@ def setup(client):
         chat_id = message.chat.id
         backup = _load_backup()
         if backup is None:
-            await _notify(client, chat_id, "Backup profil tidak ditemukan.")
+            await _notify(client, chat_id, "❌ Backup profil tidak ditemukan.")
             return
 
         errors = []

@@ -29,7 +29,7 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "Perintah ini hanya bisa digunakan di grup.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_promote_members")
@@ -39,11 +39,11 @@ def setup(client):
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await send_ui(client, chat.id, "Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", expandable=True)
             return
 
         if await is_self_target_async(client, target_id):
-            await send_ui(client, chat.id, "Tidak bisa demote diri sendiri.", "DEMOTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, "❌ Tidak bisa demote diri sendiri.", expandable=True)
             return
 
         privileges = ChatPrivileges(
@@ -62,7 +62,7 @@ def setup(client):
 
         try:
             await client.promote_chat_member(chat.id, target_id, privileges=privileges)
-            await send_ui(client, chat.id, "Admin berhasil didemote.", "DEMOTE", "ADMIN", "SUCCESS", expandable=True)
+            await send_ui(client, chat.id, "✅ Admin berhasil didemote.", expandable=True)
         except Exception as exc:
             log.exception(f"[Admin:Demote] Gagal demote user {target_id}: {exc}")
             await send_ui(client, chat.id, admin_error_message(exc), "DEMOTE", "ADMIN", "ERROR", expandable=True)

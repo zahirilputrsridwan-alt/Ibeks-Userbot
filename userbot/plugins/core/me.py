@@ -24,4 +24,10 @@ def setup(client):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
         me = await client.get_me()
-        await send_ui(client, message.chat.id, format_me_info(me), "INFO AKUN", "CORE", "INFO", expandable=True)
+        await send_ui(
+            client,
+            message.chat.id,
+            format_me_info(me),
+            expandable=True,
+            disable_web_page_preview=True,
+        )
