@@ -24,6 +24,7 @@ from config import (
     MAIN_FILE,
     RESTART_STATE_FILE,
     MANAGER_BOT_ID,
+    MANAGER_BOT_USERNAME,
     MANAGER_USER_ID,
 )
 from db import init_db
@@ -211,8 +212,9 @@ def main() -> None:
         if MANAGER_BOT_ID:
             try:
                 # Membuka private chat agar Bot Manager dapat mengirim command.
+                manager_peer = MANAGER_BOT_USERNAME or MANAGER_BOT_ID
                 client.send_message(
-                    MANAGER_BOT_ID,
+                    manager_peer,
                     f"{_MANAGER_HANDSHAKE}{MANAGER_USER_ID}",
                 )
             except Exception as exc:

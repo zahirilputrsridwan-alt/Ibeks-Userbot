@@ -40,6 +40,7 @@ _manual_stops: set[int] = set()
 _supervisors: dict[int, asyncio.Task] = {}
 _supervisor_stop = asyncio.Event()
 _manager_bot_id: int = 0
+_manager_bot_username: str = ""
 _USERBOT_ID_RE = re.compile(r"User ID\s*:\s*(\d+)")
 _MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
 
@@ -61,6 +62,7 @@ def _child_environment(user_id: int, session_string: str) -> dict[str, str]:
     environment["STRING_SESSION"] = session_string
     environment["USERBOT_RUNTIME_DIR"] = _runtime_dir(user_id)
     environment["MANAGER_BOT_ID"] = str(_manager_bot_id)
+    environment["MANAGER_BOT_USERNAME"] = _manager_bot_username
     environment["MANAGER_USER_ID"] = str(user_id)
     environment["PYTHONUNBUFFERED"] = "1"
     return environment
@@ -70,6 +72,13 @@ def set_manager_bot_id(bot_id: int) -> None:
     """Simpan ID Manager Bot untuk mengizinkan relay pada child Userbot."""
     global _manager_bot_id
     _manager_bot_id = int(bot_id)
+
+
+def set_manager_bot_identity(bot_id: int, username: str | None = None) -> None:
+    """Simpan identitas Manager Bot untuk handshake child Userbot."""
+    global _manager_bot_id, _manager_bot_username
+    _manager_bot_id = int(bot_id)
+    _manager_bot_username = (username or "").lstrip("@")
 
 
 def mark_userbot_handshake(manager_user_id: int, userbot_id: int) -> None:

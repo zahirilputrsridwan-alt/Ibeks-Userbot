@@ -20,7 +20,7 @@ from config import (
 )
 from database import init_db
 from engine import (
-    set_manager_bot_id,
+    set_manager_bot_identity,
     start_all_supervisors,
     stop_all_supervisors,
     stop_all_userbots,
@@ -93,7 +93,7 @@ def main() -> None:
             raise RuntimeError("Koneksi Manager Bot ke Telegram timeout.") from exc
         started = True
         bot_identity = client.get_me()
-        set_manager_bot_id(bot_identity.id)
+        set_manager_bot_identity(bot_identity.id, bot_identity.username)
         log.info(
             "✓ Terhubung sebagai @%s (ID %s).",
             bot_identity.username or "(tanpa username)",

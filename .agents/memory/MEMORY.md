@@ -10,4 +10,4 @@
 - [Manager admin panel](manager-admin-panel.md) — Owner-only operations use centralized checks and SQLite audit logs.
 - [Manager startup order](manager-startup-order.md) — login the Pyrogram client before registering plugins and message handlers.
 - [Manager handler priority](manager-handler-priority.md) — broad private-message handlers must run after explicit menu commands such as `/start`.
-- [Manager single instance](manager-single-instance.md) — only one Manager process may consume updates for the shared Bot token.
+- [Manager single instance](manager-single-instance.md) — only one Manager process and one Manager-owned Userbot child may consume each Telegram session.

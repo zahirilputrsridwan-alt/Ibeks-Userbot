@@ -13,6 +13,7 @@ API_ID: int = int(os.environ.get("API_ID", 0))
 API_HASH: str = os.environ.get("API_HASH", "")
 STRING_SESSION: str = os.environ.get("STRING_SESSION", "")
 MANAGER_BOT_ID: int = int(os.environ.get("MANAGER_BOT_ID", "0") or 0)
+MANAGER_BOT_USERNAME: str = os.environ.get("MANAGER_BOT_USERNAME", "").strip().lstrip("@")
 MANAGER_USER_ID: int = int(os.environ.get("MANAGER_USER_ID", "0") or 0)
 
 # ── Bot metadata ──────────────────────────────────────────────────────────────
