@@ -32,7 +32,14 @@ def load_plugins(client) -> dict:
                 raise TypeError("Plugin tidak memiliki fungsi setup(client)")
             setup(client)
             loaded.append(module_name)
-            log.info("Plugin aktif: %s", module_name)
+            if module_name == "plugins.start.start":
+                log.info("✓ Plugin start dimuat: %s", module_name)
+            elif module_name == "plugins.account.account":
+                log.info("✓ Plugin account dimuat: %s", module_name)
+            elif module_name == "plugins.admin.panel":
+                log.info("✓ Plugin admin dimuat: %s", module_name)
+            else:
+                log.info("Plugin aktif: %s", module_name)
         except Exception as exc:
             log.error("Plugin gagal dimuat %s: %s\n%s", module_name, exc, traceback.format_exc())
             failed.append({"module": module_name, "error": str(exc)})

@@ -8,7 +8,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from database import get_or_create_user
 from admin import is_owner
 from formatter import full_name, guide_text, welcome_text
-from logger import safe_handler
+from logger import log, safe_handler
 
 
 def main_keyboard(user_id: int | None = None) -> InlineKeyboardMarkup:
@@ -53,3 +53,5 @@ def setup(client):
             )
         else:
             await query.message.edit(guide_text(), reply_markup=home_keyboard())
+
+    log.info("✓ Handler /start terdaftar untuk chat private.")

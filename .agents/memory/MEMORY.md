@@ -8,3 +8,4 @@
 - [Manager terminal relay](manager-terminal-relay.md) — relay by prefix and private handshake, never by a hardcoded command list.
 - [Manager membership](manager-membership.md) — calculate Active/Expired from UTC expiry and grant the initial period only once.
 - [Manager admin panel](manager-admin-panel.md) — Owner-only operations use centralized checks and SQLite audit logs.
+- [Manager startup order](manager-startup-order.md) — login the Pyrogram client before registering plugins and message handlers.
