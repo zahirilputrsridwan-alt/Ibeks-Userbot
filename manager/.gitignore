@@ -1,3 +1,4 @@
 userbot_runtime/
 __pycache__/
 logs/*.log
+manager.lock
