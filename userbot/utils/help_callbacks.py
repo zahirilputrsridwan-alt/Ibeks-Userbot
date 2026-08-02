@@ -38,20 +38,20 @@ async def _edit_text_and_markup(client, message, text, reply_markup) -> None:
             message.chat.id,
             message.id,
             text,
-        )
-    except RPCError as exc:
-        # Telegram mengembalikan MessageNotModified jika user menekan tombol
-        # halaman yang sama. Keyboard tetap dicoba agar UI tidak macet.
-        log.debug("[Help] Teks tidak berubah: %s", exc)
-
-    try:
-        await client.edit_message_reply_markup(
-            message.chat.id,
-            message.id,
             reply_markup=reply_markup,
         )
     except RPCError as exc:
-        log.debug("[Help] Keyboard tidak berubah: %s", exc)
+        # Telegram mengembalikan MessageNotModified jika user menekan tombol
+        # halaman yang sama. Tetap sinkronkan markup jika diperlukan.
+        log.debug("[Help] Teks tidak berubah: %s", exc)
+        try:
+            await client.edit_message_reply_markup(
+                message.chat.id,
+                message.id,
+                reply_markup=reply_markup,
+            )
+        except RPCError as markup_exc:
+            log.debug("[Help] Keyboard tidak berubah: %s", markup_exc)
 
 
 async def _render_home(client, message, catalog, page: int) -> None:

@@ -9,9 +9,9 @@ from __future__ import annotations
 import asyncio
 
 from pyrogram import filters
+from pyrogram.types import InlineKeyboardMarkup
 
 from config import AUTO_DELETE_CMD
-from plugins.utils.ui import send_ui
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.help_builder import (
@@ -47,11 +47,15 @@ def setup(client):
             page=0,
             pages=page_count(catalog),
         )
-        await send_ui(
-            client,
+        keyboard = home_keyboard(catalog, 0)
+        if not isinstance(keyboard, InlineKeyboardMarkup):
+            raise TypeError("Help home keyboard harus berupa InlineKeyboardMarkup")
+        # Help sengaja tidak melalui helper output umum: keyboard harus selalu
+        # dipasang eksplisit pada pesan pertama.
+        await client.send_message(
             message.chat.id,
             text,
-            reply_markup=home_keyboard(catalog, 0),
+            reply_markup=keyboard,
         )
 
     register_help_callbacks(client)

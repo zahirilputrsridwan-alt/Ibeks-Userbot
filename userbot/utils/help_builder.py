@@ -148,7 +148,11 @@ def home_keyboard(
     catalog: dict[str, CategoryInfo],
     page: int = 0,
 ) -> InlineKeyboardMarkup:
-    """Keyboard home: dua kolom kategori dan navigasi halaman."""
+    """Keyboard home: dua kolom kategori dan navigasi halaman.
+
+    Untuk katalog satu halaman, Back tetap disediakan agar layout navigasi
+    selalu memiliki aksi eksplisit selain Home.
+    """
     current_page = clamp_page(catalog, page)
     categories = categories_for_page(catalog, current_page)
     rows = [
@@ -158,15 +162,23 @@ def home_keyboard(
         ]
         for index in range(0, len(categories), 2)
     ]
-    previous_page = max(0, current_page - 1)
-    next_page = min(page_count(catalog) - 1, current_page + 1)
-    rows.append(
-        [
-            _button("◀ Prev", f"help_page:{previous_page}"),
-            _button("🏠 Home", "help_home"),
-            _button("▶ Next", f"help_page:{next_page}"),
-        ]
-    )
+    if page_count(catalog) == 1:
+        rows.append(
+            [
+                _button("⬅️ Back", "help_back:0"),
+                _button("🏠 Home", "help_home"),
+            ]
+        )
+    else:
+        previous_page = max(0, current_page - 1)
+        next_page = min(page_count(catalog) - 1, current_page + 1)
+        rows.append(
+            [
+                _button("◀️", f"help_page:{previous_page}"),
+                _button("🏠 Home", "help_home"),
+                _button("▶️", f"help_page:{next_page}"),
+            ]
+        )
     return InlineKeyboardMarkup(rows)
 
 
