@@ -16,6 +16,7 @@ from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.fun_generator import generate_ctampan, generate_ccantik
 from plugins.utils.ui import send_ui
+from utils.ui.expandable import send_expandable
 
 
 def setup(client):
@@ -64,17 +65,20 @@ def setup(client):
 
         name, user_id, progress, aura, outfit, plus, tier = generate_ccantik(target_user)
 
-        text = (
-            "✨ CEK CANTIK — REPORT ✨\n"
-            "━━━━━━ ★ ━━━━━━\n\n"
-            f"👤 Target : `{name}`\n"
-            f"🆔 ID : `{user_id}`\n\n"
-            "📊 Kecantikan\n"
+        report = (
+            f"👤 Target:    {name}\n"
+            f"🔑 ID:        {user_id}\n\n"
+            "📊 Level Kecantikan\n"
             f"{progress}\n\n"
-            f"💖 Aura : {aura}\n"
-            f"👗 Outfit : {outfit}\n"
-            f"⭐ Plus : {plus}\n"
-            f"🏆 Tier : {tier}\n\n"
-            "⨱ IBEKS USERBOT ⨱"
+            f"💖 Aura: {aura}\n"
+            f"👗 Penampilan: {outfit}\n"
+            f"⭐ Keunggulan: {plus}\n\n"
+            f"💖 Tier: {tier}"
         )
-        await send_ui(client, chat_id, text, expandable=True)
+        await send_expandable(
+            client,
+            chat_id,
+            "✨ CEK CANTIK — REPORT ✨",
+            report,
+            "⨱ FREE UBOT @LEGACYP ⨱",
+        )

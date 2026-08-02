@@ -28,3 +28,9 @@ description: Shared Telegram presentation rules for text-only plugins.
 **Why:** Telegram rejects bot-to-self messages, and the bridge is started before `client.run()` completes, so processing during boot can otherwise drop valid requests.
 
 **How to apply:** Preserve the request until `client.is_connected` is true, then use `user_id` only for the bot-self target; normal user/group chats continue using their original `chat_id`.
+
+**Expandable report prototype:** Native report expand/collapse uses one message plus a collapsed blockquote entity; the shared helper lives under `userbot/utils/ui/expandable.py`, but adoption remains opt-in per plugin.
+
+**Why:** The prototype must preserve the compact header/footer while allowing Telegram to reveal the report body without callbacks or a second message.
+
+**How to apply:** Keep the helper isolated and only wire it into a plugin after that plugin is explicitly approved; do not migrate existing report commands in bulk.
