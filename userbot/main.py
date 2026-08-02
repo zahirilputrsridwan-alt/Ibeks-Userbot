@@ -14,32 +14,16 @@ import pyrogram
 from pyrogram import Client, filters, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
-from config import (
-    API_ID,
-    API_HASH,
-    STRING_SESSION,
-    BOT_NAME,
-    VERSION,
-    CMD_PREFIX,
-    MAIN_FILE,
-    RESTART_STATE_FILE,
-    MANAGER_BOT_ID,
-    MANAGER_BOT_USERNAME,
-    MANAGER_USER_ID,
-)
+from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX, MAIN_FILE, RESTART_STATE_FILE
 from db import init_db
 from loader import load_plugins, plugin_filename
 from utils.logger import log
-from utils.filters import install_relay_owner_filter
 from utils.prefix_manager import set_owner_id, get_prefix
 from utils.error_handler import install_global_error_handler
 from utils.voice_manager import voice_manager
-from plugins.utils.ui import send_ui
-from plugins.utils.help import category_commands, scan_plugins
 
 
 _TELEGRAM_BOT_TOKEN_RE = re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{30,}\b")
-_MANAGER_HANDSHAKE = "\u2063IBEKS_USERBOT_READY\u2063"
 
 
 def _redact_debug_text(text: str) -> str:
@@ -147,39 +131,10 @@ def main() -> None:
     install_global_error_handler()
 
     # ── Muat semua plugin ke instance client ──────────────────────────────────
-    install_relay_owner_filter(MANAGER_BOT_ID)
     plugin_stats = load_plugins(client)
 
-    @client.on_message(filters.incoming, group=1)
-    async def unknown_relay_command(_client, message):
-        """Balas command ber-prefix yang tidak ditangani plugin mana pun."""
-        if not MANAGER_BOT_ID or not message.from_user:
-            return
-        if message.from_user.id != MANAGER_BOT_ID:
-            return
-        text = (message.text or message.caption or "").strip()
-        prefix = get_prefix()
-        if not text.startswith(prefix):
-            return
-        command_name = text[len(prefix):].split(maxsplit=1)[0].split("@", 1)[0]
-        catalog = scan_plugins()
-        known_commands = {
-            command
-            for plugins in catalog.values()
-            for command in category_commands(plugins)
-        }
-        if command_name in known_commands:
-            return
-        command = text.split(maxsplit=1)[0]
-        await send_ui(
-            _client,
-            message.chat.id,
-            f"❌ Command tidak ditemukan: `{command}`",
-            expandable=True,
-        )
-
     # ── Debug handler: log semua pesan masuk (hanya log, tidak reply) ────────
-    @client.on_message(filters.incoming, group=2)
+    @client.on_message(filters.incoming)
     async def debug_incoming(_client, message):
         try:
             chat_id = message.chat.id if message.chat else "n/a"
@@ -208,17 +163,6 @@ def main() -> None:
             except Exception as exc:
                 log.warning(f"[Main] Gagal mengirim pesan restart: {exc}")
             _clear_restart_state()
-
-        if MANAGER_BOT_ID:
-            try:
-                # Membuka private chat agar Bot Manager dapat mengirim command.
-                manager_peer = MANAGER_BOT_USERNAME or MANAGER_BOT_ID
-                client.send_message(
-                    manager_peer,
-                    f"{_MANAGER_HANDSHAKE}{MANAGER_USER_ID}",
-                )
-            except Exception as exc:
-                log.warning("[Main] Gagal membuka kanal Terminal Manager: %s", exc)
 
         idle()
     except ApiIdInvalid:

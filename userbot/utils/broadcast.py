@@ -138,6 +138,7 @@ def format_broadcast_result(broadcast_type: str, result: dict) -> str:
     label = broadcast_type.upper()
     return (
         f"✅ {label} SUCCESS\n"
+        f"✅ {label} SUCCESS\n"
         f"━━━━━━ ★ ━━━━━━\n"
         f"✅ Success : {result['success']}\n"
         f"❌ Failed : {result['failed']}\n"

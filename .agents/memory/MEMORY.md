@@ -12,3 +12,4 @@
 - [Manager handler priority](manager-handler-priority.md) — broad private-message handlers must run after explicit menu commands such as `/start`.
 - [Manager single instance](manager-single-instance.md) — only one Manager process and one Manager-owned Userbot child may consume each Telegram session.
 - [Broadcast deduplication](broadcast-deduplication.md) — protect both relay and Userbot broadcast execution, and check result templates for literal duplicate lines.
+- [Standalone Userbot mode](standalone-userbot-mode.md) — the active runtime is the original Userbot without Manager Bot relay or Manager-owned runtime directories.
