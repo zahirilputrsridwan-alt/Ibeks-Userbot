@@ -2,34 +2,19 @@
 
 from __future__ import annotations
 
-import fcntl
-import asyncio
 import sys
 
 import pyrogram
-from pyrogram import Client, idle
+from pyrogram import Client
 
-from config import (
-    API_HASH,
-    API_ID,
-    BOT_NAME,
-    BOT_START_TIMEOUT_SECONDS,
-    BOT_TOKEN,
-    INSTANCE_LOCK_PATH,
-    VERSION,
-)
+from config import API_HASH, API_ID, BOT_NAME, BOT_TOKEN, VERSION
 from database import init_db
-from engine import (
-    set_manager_bot_identity,
-    start_all_supervisors,
-    stop_all_supervisors,
-    stop_all_userbots,
-)
 from loader import load_plugins
 from logger import install_global_error_handler, log
 
 
 def validate_config() -> None:
+    """Pastikan semua secret wajib tersedia sebelum bot dimulai."""
     missing = []
     if not BOT_TOKEN:
         missing.append("BOT_TOKEN")
@@ -39,30 +24,13 @@ def validate_config() -> None:
         missing.append("API_HASH")
     if missing:
         raise RuntimeError(f"Secret belum tersedia: {', '.join(missing)}")
-    log.info("✓ BOT_TOKEN, API_ID, dan API_HASH terbaca dari environment Secrets.")
-
-
-def acquire_instance_lock():
-    """Pastikan hanya satu Manager Bot memakai BOT_TOKEN pada satu workspace."""
-    lock_file = INSTANCE_LOCK_PATH.open("w", encoding="utf-8")
-    try:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError as exc:
-        lock_file.close()
-        raise RuntimeError(
-            "Manager Bot instance lain masih berjalan; startup dibatalkan."
-        ) from exc
-    lock_file.write(f"{__name__}\n")
-    lock_file.flush()
-    return lock_file
 
 
 def main() -> None:
     install_global_error_handler()
-    instance_lock = acquire_instance_lock()
     validate_config()
     init_db()
-    log.info("✓ Database berhasil dimuat.")
+    log.info("✓ Database SQLite siap.")
 
     client = Client(
         name="ibeks_manager_bot",
@@ -71,77 +39,26 @@ def main() -> None:
         bot_token=BOT_TOKEN,
         in_memory=True,
     )
-    log.info("%s v%s mulai dengan Pyrogram %s.", BOT_NAME, VERSION, pyrogram.__version__)
-    started = False
-    try:
-        log.info("Menghubungkan Manager Bot ke Telegram...")
-        try:
-            start_method = getattr(client.start, "__wrapped__", None)
-            start_coroutine = (
-                start_method(client)
-                if start_method is not None
-                else client.start()
-            )
-            client.loop.run_until_complete(
-                asyncio.wait_for(start_coroutine, timeout=BOT_START_TIMEOUT_SECONDS)
-            )
-        except asyncio.TimeoutError as exc:
-            log.error(
-                "Koneksi Telegram timeout setelah %ss; Bot belum siap menerima pesan.",
-                BOT_START_TIMEOUT_SECONDS,
-            )
-            raise RuntimeError("Koneksi Manager Bot ke Telegram timeout.") from exc
-        started = True
-        bot_identity = client.get_me()
-        set_manager_bot_identity(bot_identity.id, bot_identity.username)
-        log.info(
-            "✓ Terhubung sebagai @%s (ID %s).",
-            bot_identity.username or "(tanpa username)",
-            bot_identity.id,
-        )
-        log.info("✓ Login berhasil.")
+    log.info(
+        "%s v%s mulai dengan Pyrogram %s.",
+        BOT_NAME,
+        VERSION,
+        pyrogram.__version__,
+    )
 
+    try:
         stats = load_plugins(client)
         if stats["failed"]:
-            log.error(
-                "Startup dilanjutkan meskipun ada plugin gagal dimuat: %s",
-                ", ".join(
-                    f"{item['module']} ({item['error']})"
-                    for item in stats["failed"]
-                ),
-            )
-        else:
-            log.info("✓ Semua plugin Manager berhasil dimuat.")
-
-        # Pyrogram schedules add_handler() asynchronously. Flush those tasks
-        # before idle() so incoming updates cannot arrive without handlers.
-        client.loop.run_until_complete(asyncio.sleep(0))
-        client.loop.run_until_complete(asyncio.sleep(0))
-        dispatcher_groups = client.dispatcher.groups
-        handler_count = sum(len(handlers) for handlers in dispatcher_groups.values())
-        log.info(
-            "✓ Dispatcher aktif: %s handler dalam %s group.",
-            handler_count,
-            len(dispatcher_groups),
-        )
-        if handler_count == 0:
-            raise RuntimeError("Tidak ada handler Pyrogram yang terdaftar.")
-
-        client.loop.run_until_complete(start_all_supervisors())
-        log.info("✓ Bot siap menerima update Telegram.")
-        idle()
-    finally:
-        if started:
-            client.loop.run_until_complete(stop_all_supervisors())
-            client.loop.run_until_complete(stop_all_userbots())
-            client.stop()
-        fcntl.flock(instance_lock.fileno(), fcntl.LOCK_UN)
-        instance_lock.close()
-
-
-if __name__ == "__main__":
-    try:
-        main()
+            log.error("Sebagian plugin gagal dimuat: %s", stats["failed"])
+        client.run()
+    except KeyboardInterrupt:
+        log.info("Manager Bot dihentikan oleh pengguna.")
     except Exception:
         log.exception("Manager Bot berhenti karena error.")
         sys.exit(1)
+    finally:
+        log.info("Manager Bot offline.")
+
+
+if __name__ == "__main__":
+    main()

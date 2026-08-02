@@ -19,15 +19,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "IBEKS USERBOT"
+args = "IBEKS MANAGER BOT"
 
 [[workflows.workflow]]
-name = "IBEKS USERBOT"
+name = "IBEKS MANAGER BOT"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd userbot && python main.py"
+args = "cd manager && python main.py"
 
 [workflows.workflow.metadata]
 outputType = "console"

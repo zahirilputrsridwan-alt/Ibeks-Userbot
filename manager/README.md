@@ -1,25 +1,31 @@
 # IBEKS MANAGER BOT
 
-Pondasi Telegram Manager Bot untuk mengelola layanan IBEKS USERBOT.
+Project Manager Bot yang berdiri sendiri untuk mengelola pengguna IBEKS
+USERBOT. Source code Userbot tidak diimpor atau digabungkan pada tahap ini.
 
-## Runtime
+## Tahap saat ini
 
-- Python 3.11
-- Pyrogram 2.0.106
-- SQLite
+Fondasi awal yang tersedia:
 
-## Secret yang diperlukan
+- Python 3.11 dan Pyrogram
+- Login Bot API dengan `BOT_TOKEN`
+- `API_ID` dan `API_HASH` dibaca dari Replit Secrets
+- Plugin loader otomatis
+- SQLite dengan tabel `users`
+- `/start` dan inline keyboard
+- Menu Akun Saya, Panduan, Tentang, dan placeholder Minta Akses
+- Logging ke `manager/logs/manager.log`
+- Global error handler agar error handler tidak mematikan bot
 
-Tambahkan secret berikut di Replit:
+OTP, session Telegram, dan login akun Telegram sengaja belum dibuat.
+
+## Secrets
+
+Tambahkan Secrets berikut:
 
 - `BOT_TOKEN`
 - `API_ID`
 - `API_HASH`
-
-`BOT_TOKEN` digunakan untuk login bot manager. Login akun Telegram pengguna
-menggunakan OTP dan Password Dua Langkah didukung melalui menu `📲 Minta Akses`.
-`STRING_SESSION` pengguna tidak pernah dikirim ke chat; hanya disimpan di
-database Manager Bot.
 
 ## Menjalankan
 
@@ -28,91 +34,29 @@ cd manager
 python main.py
 ```
 
-Saat mulai, database SQLite dan tabel `users` dibuat otomatis. Plugin pada
-`manager/plugins/` dimuat otomatis oleh `loader.py`.
+## Struktur
 
-## Tahap login Telegram
+```text
+manager/
+├── main.py
+├── config.py
+├── requirements.txt
+├── README.md
+├── database.db
+├── plugins/
+│   ├── start/
+│   ├── account/
+│   ├── admin/
+│   ├── auth/
+│   └── utils/
+├── logs/
+└── assets/
+```
 
-1. Buka `/start`, lalu pilih `📲 Minta Akses`.
-2. Bagikan kontak Telegram atau kirim nomor internasional secara manual.
-3. Masukkan OTP yang dikirim Telegram.
-4. Masukkan Password Dua Langkah jika diminta.
-5. Setelah berhasil, status akun berubah menjadi `Aktif`.
+Semua plugin yang memiliki fungsi `setup(client)` di bawah `plugins/`
+dimuat otomatis saat startup.
 
-Sesi login sementara memiliki batas waktu dan dibersihkan setelah proses
-selesai, gagal, dibatalkan, atau timeout.
+## Catatan
 
-## Engine Userbot
-
-Setelah login berhasil, Manager Bot menyiapkan proses IBEKS USERBOT milik
-pengguna secara otomatis. Setiap pengguna memiliki proses, direktori runtime,
-database, log, dan backup plugin yang terisolasi.
-
-Kontrol tersedia dari menu `👤 Akun Saya`:
-
-- `▶ Start Userbot`
-- `⏹ Stop Userbot`
-- `🔄 Restart Userbot`
-- `📊 Status Userbot`
-
-Status lifecycle disimpan di SQLite. `STRING_SESSION` dikirim ke proses child
-melalui environment internal dan tidak pernah dicetak ke command line, pesan,
-atau log Manager Bot.
-
-## Terminal Userbot
-
-Pesan privat yang diawali prefix aktif diteruskan ke Userbot akun tersebut.
-Prefix dibaca langsung dari database runtime Userbot, sehingga perubahan lewat
-`.setprefix` langsung berlaku di Manager Bot. Manager Bot tidak mempunyai daftar
-command manual; plugin Userbot yang terpasang menjadi sumber kebenaran.
-
-Saat Userbot dijalankan oleh Manager, Userbot membuka kanal privat internal ke
-Manager terlebih dahulu. Ini diperlukan agar Telegram mengizinkan Bot Manager
-mengirim pesan ke akun Userbot; pesan handshake tersebut tidak diteruskan ke
-pengguna.
-
-Semua output pesan Userbot disalin kembali, termasuk teks, foto, video,
-animation, sticker, voice, audio, dan document. Command yang tidak tersedia
-menghasilkan error dari Userbot, sedangkan Userbot yang berhenti menampilkan
-instruksi untuk menyalakannya.
-
-## Membership
-
-Login Telegram pertama yang berhasil memberikan Membership selama 30 hari.
-Tanggal berakhir disimpan dalam UTC pada SQLite dan status `Active` atau
-`Expired` dihitung saat data dibaca. Command Terminal tidak diteruskan jika
-Membership sudah berakhir. Fungsi `extend_membership()` tersedia untuk plugin
-Admin.
-
-## Admin Panel
-
-Owner Manager Bot adalah Telegram ID `8823165964`. Hanya Owner yang dapat
-melihat dan membuka tombol `🛠 Admin Panel`. Panel menyediakan:
-
-- Daftar dan detail user
-- Statistik total, aktif, expired, online, dan offline
-- Perpanjangan Membership `+7`, `+30`, `+90`, dan `+365` hari
-- Suspend, aktifkan, serta hapus user dengan konfirmasi
-- Broadcast pesan atau media ke seluruh user terdaftar
-
-Semua operasi Admin dan percobaan akses non-Owner dicatat pada tabel audit
-SQLite `admin_logs`. Penghapusan user juga membersihkan runtime Userbot
-terisolasinya.
-
-## Deployment & Automation
-
-Manager Bot menjalankan supervisor ringan untuk setiap user yang sudah login:
-
-- Userbot otomatis dimulai setelah login berhasil dan saat Manager Bot startup.
-- Proses yang crash dipantau dan dicoba reconnect dengan exponential backoff.
-- Membership `Expired` atau akun yang disuspend menghentikan Userbot otomatis.
-- Status `Starting`, `Online`, dan `Offline` disimpan ke SQLite.
-- Satu `asyncio.Lock` dan satu supervisor menjaga agar satu user hanya memiliki
-  satu proses Userbot aktif.
-- Semua proses child dihentikan saat Manager Bot shutdown.
-- Aktivitas lifecycle dan output child dicatat ke `manager/logs/manager.log`;
-  runtime Userbot tetap terisolasi per pengguna.
-
-Interval monitoring dan batas reconnect dikonfigurasi melalui
-`USERBOT_MONITOR_INTERVAL_SECONDS`, `USERBOT_RECONNECT_INITIAL_SECONDS`, dan
-`USERBOT_RECONNECT_MAX_SECONDS`.
+Folder `userbot/` adalah project terpisah dan tidak digunakan oleh fondasi
+Manager Bot ini.

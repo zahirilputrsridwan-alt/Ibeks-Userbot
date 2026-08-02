@@ -1,60 +1,39 @@
-"""Plugin loader otomatis untuk seluruh folder manager/plugins."""
+"""Memuat otomatis semua plugin yang memiliki setup(client)."""
 
 from __future__ import annotations
 
 import importlib
-import sys
-import traceback
 
 from config import PLUGINS_DIR
 from logger import log
 
 
-def load_plugins(client) -> dict:
-    """Import semua file plugin dan panggil setup(client)."""
+def load_plugins(client) -> dict[str, list]:
+    """Cari seluruh file Python dalam plugins dan daftarkan handler-nya."""
     loaded: list[str] = []
-    failed: list[dict] = []
-    root = PLUGINS_DIR.resolve()
-    package_root = root.parent
+    failed: list[dict[str, str]] = []
 
-    if str(package_root) not in sys.path:
-        sys.path.insert(0, str(package_root))
-
-    for path in sorted(root.rglob("*.py")):
-        relative = path.relative_to(package_root)
-        if path.name == "__init__.py" or "__pycache__" in relative.parts:
+    for path in sorted(PLUGINS_DIR.rglob("*.py")):
+        if path.name == "__init__.py":
             continue
-        module_name = ".".join(relative.with_suffix("").parts)
+        relative = path.relative_to(PLUGINS_DIR).with_suffix("")
+        module_name = "plugins." + ".".join(relative.parts)
         try:
             module = importlib.import_module(module_name)
             setup = getattr(module, "setup", None)
-            if not callable(setup):
-                raise TypeError("Plugin tidak memiliki fungsi setup(client)")
+            if setup is None:
+                log.info("Plugin dilewati (tidak memiliki setup): %s", module_name)
+                continue
             setup(client)
             loaded.append(module_name)
-            if module_name == "plugins.start.start":
-                log.info("✓ Plugin start dimuat: %s", module_name)
-            elif module_name == "plugins.account.account":
-                log.info("✓ Plugin account dimuat: %s", module_name)
-            elif module_name == "plugins.admin.panel":
-                log.info("✓ Plugin admin dimuat: %s", module_name)
-            else:
-                log.info("Plugin aktif: %s", module_name)
+            log.info("✓ Plugin aktif: %s", module_name)
         except Exception as exc:
-            reason = str(exc).strip() or type(exc).__name__
-            log.error(
-                "Plugin gagal dimuat: %s — alasan: %s\n%s",
-                module_name,
-                reason,
-                traceback.format_exc(),
-            )
-            failed.append({"module": module_name, "error": reason})
+            failed.append({"module": module_name, "error": str(exc)})
+            log.exception("✗ Plugin gagal dimuat: %s", module_name)
 
-    log.info("Total plugin: %s berhasil, %s gagal.", len(loaded), len(failed))
-    for item in failed:
-        log.error(
-            "Plugin gagal dimuat: %s — alasan: %s",
-            item["module"],
-            item["error"],
-        )
+    log.info(
+        "Total plugin: %s berhasil, %s gagal.",
+        len(loaded),
+        len(failed),
+    )
     return {"loaded": loaded, "failed": failed}

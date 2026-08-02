@@ -1,4 +1,4 @@
-"""SQLite storage untuk data pengguna Manager Bot."""
+"""Akses SQLite untuk data dasar pengguna Manager Bot."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Buat database dan tabel users bila belum tersedia."""
+    """Buat database dan tabel users sesuai kontrak project."""
     Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
     with _connect() as connection:
         connection.execute(
@@ -30,48 +30,8 @@ def init_db() -> None:
                 username TEXT,
                 full_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Belum Aktif',
-                phone_number TEXT,
-                session_string TEXT,
-                userbot_telegram_id INTEGER,
-                login_at TEXT,
-                membership_expired_at TEXT,
-                suspended INTEGER NOT NULL DEFAULT 0,
-                userbot_status TEXT NOT NULL DEFAULT '🔴 Offline',
-                last_start TEXT,
-                last_stop TEXT,
-                last_restart TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
-            )
-            """
-        )
-        columns = {
-            row["name"]
-            for row in connection.execute("PRAGMA table_info(users)").fetchall()
-        }
-        for column, definition in {
-            "phone_number": "TEXT",
-            "session_string": "TEXT",
-            "userbot_telegram_id": "INTEGER",
-            "login_at": "TEXT",
-            "membership_expired_at": "TEXT",
-            "suspended": "INTEGER NOT NULL DEFAULT 0",
-            "userbot_status": "TEXT NOT NULL DEFAULT '🔴 Offline'",
-            "last_start": "TEXT",
-            "last_stop": "TEXT",
-            "last_restart": "TEXT",
-        }.items():
-            if column not in columns:
-                connection.execute(f"ALTER TABLE users ADD COLUMN {column} {definition}")
-        connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS admin_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                admin_id INTEGER NOT NULL,
-                action TEXT NOT NULL,
-                target_user_id INTEGER,
-                details TEXT,
-                created_at TEXT NOT NULL
             )
             """
         )
@@ -79,14 +39,14 @@ def init_db() -> None:
 
 
 def get_user(telegram_id: int) -> dict | None:
-    """Ambil satu user berdasarkan Telegram ID."""
+    """Ambil satu pengguna berdasarkan Telegram ID."""
     with _connect() as connection:
         row = connection.execute(
-            "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, membership_expired_at, "
-            "suspended, userbot_status, last_start, last_stop, "
-            "last_restart, created_at, updated_at "
-            "FROM users WHERE telegram_id = ?",
+            """
+            SELECT telegram_id, username, full_name, status, created_at, updated_at
+            FROM users
+            WHERE telegram_id = ?
+            """,
             (telegram_id,),
         ).fetchone()
     return dict(row) if row else None
@@ -97,233 +57,27 @@ def get_or_create_user(
     username: str | None,
     full_name: str,
 ) -> dict:
-    """Ambil user atau buat record awal dengan status Belum Aktif."""
-    existing = get_user(telegram_id)
-    if existing:
-        with _connect() as connection:
-            connection.execute(
-                "UPDATE users SET username = ?, full_name = ?, updated_at = ? "
-                "WHERE telegram_id = ?",
-                (username, full_name, _now(), telegram_id),
+    """Buat user pertama kali atau segarkan profilnya."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO users (
+                telegram_id, username, full_name, status, created_at, updated_at
             )
-            connection.commit()
-        return get_user(telegram_id) or existing
-
-    timestamp = _now()
-    with _connect() as connection:
-        connection.execute(
-            """
-            INSERT INTO users
-                (telegram_id, username, full_name, status, created_at, updated_at)
             VALUES (?, ?, ?, 'Belum Aktif', ?, ?)
-            """,
-            (telegram_id, username, full_name, timestamp, timestamp),
-        )
-        connection.commit()
-    return get_user(telegram_id) or {}
-
-
-def get_user_by_userbot_id(userbot_telegram_id: int) -> dict | None:
-    """Ambil pemilik Manager berdasarkan ID akun Telegram Userbot."""
-    with _connect() as connection:
-        row = connection.execute(
-            "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, membership_expired_at, suspended, "
-            "userbot_status, "
-            "last_start, last_stop, last_restart, created_at, updated_at "
-            "FROM users WHERE userbot_telegram_id = ?",
-            (userbot_telegram_id,),
-        ).fetchone()
-    return dict(row) if row else None
-
-
-def list_users() -> list[dict]:
-    """Ambil semua user tanpa mengekspos session ke caller."""
-    with _connect() as connection:
-        rows = connection.execute(
-            "SELECT telegram_id, username, full_name, status, phone_number, "
-            "userbot_telegram_id, login_at, membership_expired_at, suspended, "
-            "userbot_status, last_start, last_stop, last_restart, created_at, updated_at "
-            "FROM users ORDER BY created_at ASC"
-        ).fetchall()
-    return [dict(row) for row in rows]
-
-
-def set_suspended(telegram_id: int, suspended: bool) -> bool:
-    """Ubah status suspend user dan kembalikan apakah user ditemukan."""
-    with _connect() as connection:
-        cursor = connection.execute(
-            "UPDATE users SET suspended = ?, updated_at = ? WHERE telegram_id = ?",
-            (1 if suspended else 0, _now(), telegram_id),
-        )
-        connection.commit()
-    return cursor.rowcount > 0
-
-
-def delete_user(telegram_id: int) -> bool:
-    """Hapus satu user dari database Manager."""
-    with _connect() as connection:
-        cursor = connection.execute(
-            "DELETE FROM users WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        connection.commit()
-    return cursor.rowcount > 0
-
-
-def statistics() -> dict[str, int]:
-    """Hitung statistik user dari snapshot SQLite."""
-    # Membership memiliki aturan UTC sendiri; jangan membandingkan ISO string
-    # dengan fungsi waktu SQLite yang memakai timezone lokal.
-    from membership import membership_status
-
-    users = list_users()
-    total = len(users)
-    active = sum(
-        1
-        for user in users
-        if user.get("suspended") == 0
-        and membership_status(user.get("membership_expired_at")) == "Active"
-    )
-    expired = sum(
-        1
-        for user in users
-        if membership_status(user.get("membership_expired_at")) == "Expired"
-    )
-    online = sum(
-        1
-        for user in users
-        if user.get("userbot_status") == "🟢 Online"
-    )
-    return {
-        "total": total,
-        "active": active,
-        "expired": expired,
-        "online": online,
-        "offline": max(0, total - online),
-    }
-
-
-def log_admin_activity(
-    admin_id: int,
-    action: str,
-    target_user_id: int | None = None,
-    details: str | None = None,
-) -> None:
-    """Simpan audit aktivitas Admin tanpa menyimpan session atau pesan rahasia."""
-    with _connect() as connection:
-        connection.execute(
-            """
-            INSERT INTO admin_logs
-                (admin_id, action, target_user_id, details, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (admin_id, action, target_user_id, details, _now()),
-        )
-        connection.commit()
-
-
-def set_membership_expired_at(
-    telegram_id: int,
-    expired_at: str,
-) -> None:
-    """Simpan waktu berakhir Membership dalam format ISO UTC."""
-    with _connect() as connection:
-        connection.execute(
-            "UPDATE users SET membership_expired_at = ?, updated_at = ? "
-            "WHERE telegram_id = ?",
-            (expired_at, _now(), telegram_id),
-        )
-        connection.commit()
-
-
-def set_userbot_identity(telegram_id: int, userbot_telegram_id: int) -> None:
-    """Simpan ID akun Userbot setelah child berhasil login."""
-    with _connect() as connection:
-        connection.execute(
-            "UPDATE users SET userbot_telegram_id = ?, updated_at = ? "
-            "WHERE telegram_id = ?",
-            (userbot_telegram_id, _now(), telegram_id),
-        )
-        connection.commit()
-
-
-def save_login(
-    telegram_id: int,
-    phone_number: str,
-    session_string: str,
-    userbot_telegram_id: int,
-    username: str | None,
-    full_name: str,
-) -> None:
-    """Simpan hasil login tanpa pernah mengembalikan session ke pengguna."""
-    timestamp = _now()
-    with _connect() as connection:
-        connection.execute(
-            """
-            UPDATE users
-            SET username = ?,
-                full_name = ?,
-                phone_number = ?,
-                session_string = ?,
-                userbot_telegram_id = ?,
-                login_at = ?,
-                status = 'Aktif',
-                userbot_status = '🟡 Starting',
-                updated_at = ?
-            WHERE telegram_id = ?
+            ON CONFLICT(telegram_id) DO UPDATE SET
+                username = excluded.username,
+                full_name = excluded.full_name,
+                updated_at = excluded.updated_at
             """,
             (
-                username,
-                full_name,
-                phone_number,
-                session_string,
-                userbot_telegram_id,
-                timestamp,
-                timestamp,
                 telegram_id,
+                username,
+                full_name or "Pengguna Telegram",
+                timestamp,
+                timestamp,
             ),
         )
         connection.commit()
-
-
-def update_userbot_state(
-    telegram_id: int,
-    status: str,
-    *,
-    last_start: str | None = None,
-    last_stop: str | None = None,
-    last_restart: str | None = None,
-) -> None:
-    """Simpan status dan timestamp lifecycle Userbot."""
-    fields = ["userbot_status = ?", "updated_at = ?"]
-    values: list[str | int | None] = [status, _now()]
-    for column, value in (
-        ("last_start", last_start),
-        ("last_stop", last_stop),
-        ("last_restart", last_restart),
-    ):
-        if value is not None:
-            fields.append(f"{column} = ?")
-            values.append(value)
-    values.append(telegram_id)
-    with _connect() as connection:
-        connection.execute(
-            f"UPDATE users SET {', '.join(fields)} WHERE telegram_id = ?",
-            values,
-        )
-        connection.commit()
-
-
-def list_logged_in_users() -> list[dict]:
-    """Ambil user yang memiliki session untuk kebutuhan supervisor."""
-    with _connect() as connection:
-        rows = connection.execute(
-            "SELECT telegram_id, username, full_name, status, phone_number, "
-            "session_string, userbot_telegram_id, login_at, membership_expired_at, "
-            "suspended, userbot_status, last_start, last_stop, last_restart, "
-            "created_at, updated_at "
-            "FROM users WHERE session_string IS NOT NULL AND session_string != '' "
-            "ORDER BY telegram_id"
-        ).fetchall()
-    return [dict(row) for row in rows]
+    return get_user(telegram_id) or {}

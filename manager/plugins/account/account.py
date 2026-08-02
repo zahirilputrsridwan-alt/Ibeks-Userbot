@@ -1,13 +1,19 @@
-"""Menu informasi akun pengguna."""
+"""Callback menu Akun Saya."""
 
 from __future__ import annotations
 
 from pyrogram import filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from database import get_or_create_user
 from formatter import account_text, full_name
 from logger import safe_handler
-from plugins.terminal.userbot import account_keyboard
+
+
+def account_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🏠 Menu Utama", callback_data="manager:home")]]
+    )
 
 
 def setup(client):
