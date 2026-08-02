@@ -17,6 +17,7 @@ from utils.filters import dynamic_command
 from utils.fun_generator import generate_ctampan, generate_ccantik
 from plugins.utils.ui import send_ui
 from utils.ui.expandable import send_expandable
+from utils.logger import log
 
 
 def setup(client):
@@ -54,6 +55,11 @@ def setup(client):
     @client.on_message(dynamic_command("ccantik") & filters.me)
     async def cmd_ccantik(client, message):
         """Handler command .ccantik"""
+        log.info(
+            "[CCANTIK] Handler masuk: chat_id=%s message_id=%s.",
+            getattr(message.chat, "id", "unknown"),
+            getattr(message, "id", "unknown"),
+        )
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
         chat_id = message.chat.id
