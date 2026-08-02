@@ -34,3 +34,9 @@ description: Shared Telegram presentation rules for text-only plugins.
 **Why:** The prototype must preserve the compact header/footer while allowing Telegram to reveal the report body without callbacks or a second message.
 
 **How to apply:** Keep the helper isolated and only wire it into a plugin after that plugin is explicitly approved; do not migrate existing report commands in bulk.
+
+**Runtime result:** The `.ccantik` proof of concept submitted `messageEntityBlockquote` with `flags=1` and `collapsed=True`; Telegram returned the message, but Telegram Android rendered plain text.
+
+**Why:** Runtime logs prove the MTProto entity reached `send_message`; the observed client result means this Userbot/Pyrogram path is not visibly rendered as expandable by the tested Android client.
+
+**How to apply:** Do not claim expandable UI success from compile or RPC success alone, and do not apply this helper to other plugins unless a client-rendered expandable result is independently confirmed.
