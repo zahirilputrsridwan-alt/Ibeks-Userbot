@@ -321,7 +321,12 @@ async def _owner_action(query, action: str, telegram_id: int) -> None:
 
 
 def setup(client):
-    @client.on_message(filters.command("panel") & filters.private)
+    # Login memiliki handler teks umum pada group 0. Tempatkan command khusus
+    # ini lebih awal agar /panel tidak dikonsumsi handler teks login.
+    @client.on_message(
+        filters.command("panel") & filters.private,
+        group=-90,
+    )
     @safe_handler
     async def panel_command(_client, message):
         if not _is_owner(message):

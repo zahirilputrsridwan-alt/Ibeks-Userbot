@@ -26,9 +26,15 @@ def load_plugins(client) -> dict[str, list]:
                 continue
             setup(client)
             loaded.append(module_name)
+            if path.name == "panel.py":
+                log.info("[Loader] Loaded panel.py")
+                log.info("[Loader] Registered /panel")
+                log.info("[Panel] Ready")
             log.info("✓ Plugin aktif: %s", module_name)
         except Exception as exc:
             failed.append({"module": module_name, "error": str(exc)})
+            if path.name == "panel.py":
+                log.error("[Loader] Failed panel.py: %s", exc)
             log.exception("✗ Plugin gagal dimuat: %s", module_name)
 
     log.info(
