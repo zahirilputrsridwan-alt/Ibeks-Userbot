@@ -16,8 +16,6 @@ from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.fun_generator import generate_ctampan, generate_ccantik
 from plugins.utils.ui import send_ui
-from utils.ui.expandable import send_expandable
-from utils.logger import log
 
 
 def setup(client):
@@ -55,11 +53,6 @@ def setup(client):
     @client.on_message(dynamic_command("ccantik") & filters.me)
     async def cmd_ccantik(client, message):
         """Handler command .ccantik"""
-        log.info(
-            "[CCANTIK] Handler masuk: chat_id=%s message_id=%s.",
-            getattr(message.chat, "id", "unknown"),
-            getattr(message, "id", "unknown"),
-        )
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
         chat_id = message.chat.id
@@ -71,20 +64,17 @@ def setup(client):
 
         name, user_id, progress, aura, outfit, plus, tier = generate_ccantik(target_user)
 
-        report = (
-            f"👤 Target:    {name}\n"
-            f"🔑 ID:        {user_id}\n\n"
-            "📊 Level Kecantikan\n"
+        text = (
+            "✨ CEK CANTIK — REPORT ✨\n"
+            "━━━━━━ ★ ━━━━━━\n\n"
+            f"👤 Target : `{name}`\n"
+            f"🆔 ID : `{user_id}`\n\n"
+            "📊 Kecantikan\n"
             f"{progress}\n\n"
-            f"💖 Aura: {aura}\n"
-            f"👗 Penampilan: {outfit}\n"
-            f"⭐ Keunggulan: {plus}\n\n"
-            f"💖 Tier: {tier}"
+            f"💖 Aura : {aura}\n"
+            f"👗 Outfit : {outfit}\n"
+            f"⭐ Plus : {plus}\n"
+            f"🏆 Tier : {tier}\n\n"
+            "⨱ IBEKS USERBOT ⨱"
         )
-        await send_expandable(
-            client,
-            chat_id,
-            "✨ CEK CANTIK — REPORT ✨",
-            report,
-            "⨱ FREE UBOT @LEGACYP ⨱",
-        )
+        await send_ui(client, chat_id, text, expandable=True)
