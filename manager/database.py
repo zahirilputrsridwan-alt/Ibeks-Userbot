@@ -274,3 +274,32 @@ def set_userbot_status(
             values,
         )
         connection.commit()
+
+
+def set_user_status(telegram_id: int, status: str) -> dict | None:
+    """Perbarui status akses user untuk operasi Admin Panel."""
+    timestamp = _now()
+    with _connect() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE users
+            SET status = ?, updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (status, timestamp, telegram_id),
+        )
+        connection.commit()
+        if cursor.rowcount != 1:
+            return None
+    return get_user(telegram_id)
+
+
+def delete_user(telegram_id: int) -> bool:
+    """Hapus row user beserta STRING_SESSION dari SQLite."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            "DELETE FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        )
+        connection.commit()
+    return cursor.rowcount == 1
