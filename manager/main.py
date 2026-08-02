@@ -3,11 +3,20 @@
 from __future__ import annotations
 
 import sys
+import fcntl
+import os
 
 import pyrogram
 from pyrogram import Client
 
-from config import API_HASH, API_ID, BOT_NAME, BOT_TOKEN, VERSION
+from config import (
+    API_HASH,
+    API_ID,
+    BOT_NAME,
+    BOT_TOKEN,
+    INSTANCE_LOCK_PATH,
+    VERSION,
+)
 from database import init_db
 from loader import load_plugins
 from logger import install_global_error_handler, log
@@ -26,27 +35,44 @@ def validate_config() -> None:
         raise RuntimeError(f"Secret belum tersedia: {', '.join(missing)}")
 
 
+def acquire_instance_lock():
+    """Pastikan hanya satu proses Manager memakai BOT_TOKEN."""
+    lock_file = INSTANCE_LOCK_PATH.open("w", encoding="utf-8")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock_file.close()
+        raise RuntimeError(
+            "Manager Bot instance lain masih berjalan; startup dibatalkan."
+        ) from exc
+    lock_file.write(f"pid={os.getpid()}\n")
+    lock_file.flush()
+    return lock_file
+
+
 def main() -> None:
     install_global_error_handler()
-    validate_config()
-    init_db()
-    log.info("✓ Database SQLite siap.")
-
-    client = Client(
-        name="ibeks_manager_bot",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        bot_token=BOT_TOKEN,
-        in_memory=True,
-    )
-    log.info(
-        "%s v%s mulai dengan Pyrogram %s.",
-        BOT_NAME,
-        VERSION,
-        pyrogram.__version__,
-    )
-
+    lock_file = None
     try:
+        lock_file = acquire_instance_lock()
+        validate_config()
+        init_db()
+        log.info("✓ Database SQLite siap.")
+
+        client = Client(
+            name="ibeks_manager_bot",
+            api_id=API_ID,
+            api_hash=API_HASH,
+            bot_token=BOT_TOKEN,
+            in_memory=True,
+        )
+        log.info(
+            "%s v%s mulai dengan Pyrogram %s.",
+            BOT_NAME,
+            VERSION,
+            pyrogram.__version__,
+        )
+
         stats = load_plugins(client)
         if stats["failed"]:
             log.error("Sebagian plugin gagal dimuat: %s", stats["failed"])
@@ -57,6 +83,8 @@ def main() -> None:
         log.exception("Manager Bot berhenti karena error.")
         sys.exit(1)
     finally:
+        if lock_file is not None:
+            lock_file.close()
         log.info("Manager Bot offline.")
 
 

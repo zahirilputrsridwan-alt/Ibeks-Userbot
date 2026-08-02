@@ -14,3 +14,4 @@
 - [Broadcast deduplication](broadcast-deduplication.md) — protect both relay and Userbot broadcast execution, and check result templates for literal duplicate lines.
 - [Standalone Userbot mode](standalone-userbot-mode.md) — the active runtime is the original Userbot without Manager Bot relay or Manager-owned runtime directories.
 - [Manager foundation mode](manager-foundation-mode.md) — the new Manager starts independently with menus and SQLite; OTP, session, relay, and Userbot control are intentionally deferred.
+- [Manager single-instance foundation](manager-single-instance-foundation.md) — guard the standalone Manager Bot token with a filesystem lock to prevent duplicate responses.
