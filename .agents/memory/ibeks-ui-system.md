@@ -16,3 +16,9 @@ description: Shared Telegram presentation rules for text-only plugins.
 **Why:** The generic text helper is intentionally optimized for plain text output, while Help requires Telegram to receive an explicit keyboard on the first send and on every page edit.
 
 **How to apply:** Keep this direct path limited to interactive Help UI; other text-only plugins should continue using the shared sender.
+
+**Help bridge note:** Inline Help is sent and edited by the Manager bot token; the STRING_SESSION Userbot only requests Help through its isolated runtime IPC file. All other Userbot commands remain on STRING_SESSION.
+
+**Why:** Telegram inline callback keyboards are bot UI; the target screenshot is a bot message, while a Userbot account cannot provide the same callback experience.
+
+**How to apply:** Keep the catalog source in `userbot/plugins`, keep callback prefixes under `help_*`, and never route unrelated commands through the bot-token bridge.

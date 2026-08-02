@@ -39,6 +39,10 @@ RUNNER_READY_FILE: str = os.environ.get(
     "IBEKS_RUNNER_READY_FILE",
     os.path.join(BASE_DIR, ".runner_ready"),
 )
+HELP_REQUEST_PATH: str = os.environ.get(
+    "IBEKS_HELP_REQUEST_PATH",
+    os.path.join(BASE_DIR, ".help_request.json"),
+)
 
 # ── Auto-delete delay (detik) ─────────────────────────────────────────────────
 AUTO_DELETE_CMD: int = 5   # Hapus pesan command setelah N detik
