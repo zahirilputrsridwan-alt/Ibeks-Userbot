@@ -12,7 +12,8 @@ import subprocess
 import sys
 import threading
 import time
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 from config import USERBOT_MAIN_FILE, USERBOT_RUNTIME_DIR, USERBOT_SOURCE_DIR
@@ -37,17 +38,27 @@ class _ManagedUserbot:
     process: subprocess.Popen
     runtime_dir: Path
     ready_file: Path
+    generation: int
     stopping: bool = False
-    lock: threading.Lock = field(default_factory=threading.Lock)
+
+
+# Satu registry untuk setiap akun. Client Pyrogram hidup di worker masing-masing;
+# record di sini adalah handle proses yang memiliki Client tersebut.
+running_clients: dict[int, _ManagedUserbot] = {}
 
 
 class UserbotRunner:
     """Menjalankan banyak Userbot dengan session dan runtime terisolasi."""
 
     def __init__(self) -> None:
-        self._processes: dict[int, _ManagedUserbot] = {}
+        # Alias internal dipertahankan agar tidak mengubah API internal Tahap 4.
+        self._processes = running_clients
         self._manual_stops: set[int] = set()
         self._lock = threading.RLock()
+        self._user_locks: defaultdict[int, threading.RLock] = defaultdict(
+            threading.RLock
+        )
+        self._generations: defaultdict[int, int] = defaultdict(int)
         self._shutdown = threading.Event()
         self._reconciler: threading.Thread | None = None
 
@@ -96,23 +107,36 @@ class UserbotRunner:
             if self._eligible(user) and telegram_id not in self._manual_stops:
                 self.start_userbot(telegram_id, reason="auto-start/reconcile")
 
+    def _log_active_count(self) -> None:
+        with self._lock:
+            active_count = sum(
+                managed.process.poll() is None
+                for managed in self._processes.values()
+            )
+        log.info("[Runner] Active Userbots: %s", active_count)
+
     def start_userbot(self, telegram_id: int, *, reason: str = "manual") -> bool:
         """Mulai satu Userbot jika user memenuhi seluruh syarat akses."""
-        user = get_user(telegram_id)
-        if not self._eligible(user):
-            log.info(
-                "[Runner] Userbot %s tidak dijalankan: status akses tidak valid.",
-                telegram_id,
-            )
-            return False
+        with self._user_locks[telegram_id]:
+            user = get_user(telegram_id)
+            if not self._eligible(user):
+                log.info(
+                    "[Runner] Userbot %s tidak dijalankan: status akses tidak valid.",
+                    telegram_id,
+                )
+                return False
 
-        self._manual_stops.discard(telegram_id)
-        with self._lock:
-            current = self._processes.get(telegram_id)
-            if current and current.process.poll() is None:
-                return True
-            if current:
-                self._processes.pop(telegram_id, None)
+            self._manual_stops.discard(telegram_id)
+            with self._lock:
+                current = self._processes.get(telegram_id)
+                if current and current.process.poll() is None:
+                    return True
+                if current:
+                    # Worker sudah selesai; jangan biarkan record lama tertimpa
+                    # oleh watcher yang belum sempat menyelesaikan cleanup.
+                    self._processes.pop(telegram_id, None)
+                self._generations[telegram_id] += 1
+                generation = self._generations[telegram_id]
 
             runtime_dir = USERBOT_RUNTIME_DIR / str(telegram_id)
             runtime_dir.mkdir(parents=True, exist_ok=True)
@@ -150,8 +174,10 @@ class UserbotRunner:
                 process=process,
                 runtime_dir=runtime_dir,
                 ready_file=ready_file,
+                generation=generation,
             )
-            self._processes[telegram_id] = managed
+            with self._lock:
+                self._processes[telegram_id] = managed
             threading.Thread(
                 target=self._watch_process,
                 args=(managed,),
@@ -159,11 +185,13 @@ class UserbotRunner:
                 daemon=True,
             ).start()
             log.info(
-                "[Runner] Userbot %s Starting (reason=%s, pid=%s).",
+                "[Runner] Starting userbot: %s (reason=%s, pid=%s).",
                 telegram_id,
                 reason,
                 process.pid,
             )
+            log.info("[Runner] Started userbot: %s", telegram_id)
+            self._log_active_count()
             return True
 
     def _watch_process(self, managed: _ManagedUserbot) -> None:
@@ -180,13 +208,19 @@ class UserbotRunner:
             is_current = self._processes.get(managed.telegram_id) is managed
             if is_current:
                 self._processes.pop(managed.telegram_id, None)
-        set_userbot_status(managed.telegram_id, OFFLINE, stopped=True)
+        # Worker lama tidak boleh menimpa status worker baru untuk akun yang
+        # sama. Ini juga menjaga akun lain karena setiap record keyed by user ID.
+        if is_current:
+            set_userbot_status(managed.telegram_id, OFFLINE, stopped=True)
         if managed.stopping:
             log.info(
                 "[Runner] Userbot %s Offline setelah dihentikan (code=%s).",
                 managed.telegram_id,
                 return_code,
             )
+        if is_current:
+            log.info("[Runner] Stopped userbot: %s", managed.telegram_id)
+            self._log_active_count()
         else:
             log.error(
                 "[Runner] Userbot %s crash/offline (code=%s). Userbot lain tetap berjalan.",
@@ -202,30 +236,36 @@ class UserbotRunner:
         suppress_restart: bool = False,
     ) -> bool:
         """Hentikan satu Userbot dan hapus dari daftar proses aktif."""
-        if suppress_restart:
-            self._manual_stops.add(telegram_id)
-        with self._lock:
-            managed = self._processes.pop(telegram_id, None)
-        if not managed:
-            user = get_user(telegram_id)
-            if user and user.get("userbot_status") != OFFLINE:
-                set_userbot_status(telegram_id, OFFLINE, stopped=True)
-            return False
+        with self._user_locks[telegram_id]:
+            if suppress_restart:
+                self._manual_stops.add(telegram_id)
+            with self._lock:
+                managed = self._processes.pop(telegram_id, None)
+            if not managed:
+                user = get_user(telegram_id)
+                if user and user.get("userbot_status") != OFFLINE:
+                    set_userbot_status(telegram_id, OFFLINE, stopped=True)
+                return False
 
-        managed.stopping = True
-        managed.ready_file.unlink(missing_ok=True)
-        log.info("[Runner] Menghentikan Userbot %s (reason=%s).", telegram_id, reason)
-        try:
-            managed.process.terminate()
-            managed.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            log.warning("[Runner] Userbot %s tidak berhenti; kill dipanggil.", telegram_id)
-            managed.process.kill()
-            managed.process.wait(timeout=5)
-        except Exception:
-            log.exception("[Runner] Error saat menghentikan Userbot %s.", telegram_id)
-        set_userbot_status(telegram_id, OFFLINE, stopped=True)
-        return True
+            managed.stopping = True
+            managed.ready_file.unlink(missing_ok=True)
+            log.info("[Runner] Menghentikan Userbot %s (reason=%s)", telegram_id, reason)
+            try:
+                managed.process.terminate()
+                managed.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                log.warning(
+                    "[Runner] Userbot %s tidak berhenti; kill dipanggil.",
+                    telegram_id,
+                )
+                managed.process.kill()
+                managed.process.wait(timeout=5)
+            except Exception:
+                log.exception("[Runner] Error saat menghentikan Userbot %s.", telegram_id)
+            set_userbot_status(telegram_id, OFFLINE, stopped=True)
+            log.info("[Runner] Stopped userbot: %s", telegram_id)
+            self._log_active_count()
+            return True
 
     def sync_user(self, telegram_id: int) -> None:
         """Segera terapkan perubahan approval/status untuk satu user."""
