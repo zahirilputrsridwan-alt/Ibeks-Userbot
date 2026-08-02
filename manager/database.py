@@ -133,9 +133,13 @@ def save_login_success(
     telegram_id: int,
     phone_number: str,
     session_string: str,
+    *,
+    approval_status: str = "pending",
+    approved_by: int | None = None,
 ) -> None:
     """Simpan session hanya setelah akun Telegram berhasil login."""
     timestamp = _now()
+    approved_at = timestamp if approval_status == "approved" else None
     with _connect() as connection:
         connection.execute(
             """
@@ -144,13 +148,22 @@ def save_login_success(
                 session_string = ?,
                 login_at = ?,
                 status = 'Active',
-                approval_status = 'pending',
-                approved_by = NULL,
-                approved_at = NULL,
+                approval_status = ?,
+                approved_by = ?,
+                approved_at = ?,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
-            (phone_number, session_string, timestamp, timestamp, telegram_id),
+            (
+                phone_number,
+                session_string,
+                timestamp,
+                approval_status,
+                approved_by,
+                approved_at,
+                timestamp,
+                telegram_id,
+            ),
         )
         connection.commit()
 

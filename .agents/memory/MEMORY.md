@@ -16,3 +16,4 @@
 - [Manager foundation mode](manager-foundation-mode.md) — the new Manager starts independently with menus and SQLite; OTP, session, relay, and Userbot control are intentionally deferred.
 - [Manager single-instance foundation](manager-single-instance-foundation.md) — guard the standalone Manager Bot token with a filesystem lock to prevent duplicate responses.
 - [Manager approval system](manager-approval-system.md) — Telegram login success stores a session but access remains pending until the configured Owner approves.
+- [Owner Userbot approval bypass](owner-userbot-approval-bypass.md) — Owner startup bypasses approval; ordinary Userbots require approved access and both runtimes have separate workflows.

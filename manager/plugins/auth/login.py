@@ -23,7 +23,7 @@ from pyrogram.types import (
     ReplyKeyboardRemove,
 )
 
-from config import API_HASH, API_ID
+from config import API_HASH, API_ID, OWNER_ID
 from database import (
     get_or_create_user,
     mark_login_failed,
@@ -201,10 +201,34 @@ async def _complete_login(
     session_string = await state.client.export_session_string()
     if not session_string:
         raise RuntimeError("Session string kosong setelah login berhasil.")
-    save_login_success(state.telegram_id, state.phone_number, session_string)
+    is_owner = state.telegram_id == OWNER_ID
+    save_login_success(
+        state.telegram_id,
+        state.phone_number,
+        session_string,
+        approval_status="approved" if is_owner else "pending",
+        approved_by=OWNER_ID if is_owner else None,
+    )
     await _delete_message(state.code_message)
     await _delete_message(state.password_message)
     await _finish_state(state.telegram_id)
+    if is_owner:
+        log.info(
+            "Akses Userbot Owner %s diizinkan: approval tidak diperlukan.",
+            state.telegram_id,
+        )
+        await message.reply(
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "🎉 Selamat!\n\n"
+            "Login Owner berhasil.\n\n"
+            "Status:\n"
+            "🟢 Active\n\n"
+            "Owner memiliki akses penuh tanpa approval.\n\n"
+            "━━━━━━━━━━━━━━━━━━",
+            reply_markup=home_keyboard(),
+        )
+        return
+
     await message.reply(
         "━━━━━━━━━━━━━━━━━━\n\n"
         "⏳ Permintaan Anda berhasil dikirim.\n\n"

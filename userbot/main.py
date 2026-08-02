@@ -6,6 +6,7 @@ Inisialisasi Pyrogram client, database, dan plugin loader.
 import sys
 import os
 import re
+import sqlite3
 
 # Tambahkan direktori userbot ke sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +15,18 @@ import pyrogram
 from pyrogram import Client, filters, idle
 from pyrogram.errors import ApiIdInvalid, AuthKeyUnregistered, SessionRevoked
 
-from config import API_ID, API_HASH, STRING_SESSION, BOT_NAME, VERSION, CMD_PREFIX, MAIN_FILE, RESTART_STATE_FILE
+from config import (
+    API_ID,
+    API_HASH,
+    STRING_SESSION,
+    OWNER_ID,
+    MANAGER_DATABASE_PATH,
+    BOT_NAME,
+    VERSION,
+    CMD_PREFIX,
+    MAIN_FILE,
+    RESTART_STATE_FILE,
+)
 from db import init_db
 from loader import load_plugins, plugin_filename
 from utils.logger import log
@@ -67,6 +79,28 @@ def _clear_restart_state() -> None:
             os.remove(RESTART_STATE_FILE)
     except Exception as exc:
         log.warning(f"[Main] Gagal menghapus state restart: {exc}")
+
+
+def _userbot_access_decision(telegram_id: int) -> tuple[bool, str]:
+    """Tentukan akses startup tanpa mengirim session atau credential ke log."""
+    if OWNER_ID and telegram_id == OWNER_ID:
+        return True, "akun adalah Owner; approval tidak diperlukan"
+
+    try:
+        with sqlite3.connect(MANAGER_DATABASE_PATH) as connection:
+            row = connection.execute(
+                "SELECT approval_status FROM users WHERE telegram_id = ?",
+                (telegram_id,),
+            ).fetchone()
+    except sqlite3.Error as exc:
+        return False, f"database approval tidak dapat dibaca: {type(exc).__name__}"
+
+    if not row:
+        return False, "akun tidak terdaftar di Manager"
+    approval_status = row[0] or "pending"
+    if approval_status == "approved":
+        return True, "approval_status=approved"
+    return False, f"approval_status={approval_status}; approval diperlukan"
 
 
 def log_startup_info(client, me, plugin_stats) -> None:
@@ -152,6 +186,22 @@ def main() -> None:
         me = client.get_me()
         # Cache owner ID untuk prefix manager dan utilities lain
         set_owner_id(me.id)
+
+        access_allowed, access_reason = _userbot_access_decision(me.id)
+        if access_allowed:
+            log.info(
+                "[Access] Userbot dijalankan untuk %s: %s.",
+                me.id,
+                access_reason,
+            )
+        else:
+            log.warning(
+                "[Access] Userbot tidak dijalankan untuk %s: %s.",
+                me.id,
+                access_reason,
+            )
+            client.stop()
+            return
 
         log_startup_info(client, me, plugin_stats)
 
