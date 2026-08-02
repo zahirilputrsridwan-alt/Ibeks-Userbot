@@ -1,4 +1,4 @@
-"""Akses SQLite untuk data dasar pengguna Manager Bot."""
+"""Akses SQLite untuk pengguna dan hasil login Telegram."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Buat database dan tabel users sesuai kontrak project."""
+    """Buat tabel users dan migrasikan kolom login tanpa menghapus data lama."""
     Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
     with _connect() as connection:
         connection.execute(
@@ -31,10 +31,26 @@ def init_db() -> None:
                 full_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'Belum Aktif',
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                phone_number TEXT,
+                session_string TEXT,
+                login_at TEXT
             )
             """
         )
+        existing_columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(users)").fetchall()
+        }
+        for column, definition in (
+            ("phone_number", "TEXT"),
+            ("session_string", "TEXT"),
+            ("login_at", "TEXT"),
+        ):
+            if column not in existing_columns:
+                connection.execute(
+                    f"ALTER TABLE users ADD COLUMN {column} {definition}"
+                )
         connection.commit()
 
 
@@ -43,7 +59,8 @@ def get_user(telegram_id: int) -> dict | None:
     with _connect() as connection:
         row = connection.execute(
             """
-            SELECT telegram_id, username, full_name, status, created_at, updated_at
+            SELECT telegram_id, username, full_name, status, created_at, updated_at,
+                   phone_number, session_string, login_at
             FROM users
             WHERE telegram_id = ?
             """,
@@ -81,3 +98,60 @@ def get_or_create_user(
         )
         connection.commit()
     return get_user(telegram_id) or {}
+
+
+def mark_login_pending(telegram_id: int, phone_number: str) -> None:
+    """Tandai percobaan login aktif tanpa menyimpan OTP atau password."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET phone_number = ?,
+                status = 'Pending',
+                session_string = NULL,
+                login_at = NULL,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (phone_number, timestamp, telegram_id),
+        )
+        connection.commit()
+
+
+def save_login_success(
+    telegram_id: int,
+    phone_number: str,
+    session_string: str,
+) -> None:
+    """Simpan session hanya setelah akun Telegram berhasil login."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET phone_number = ?,
+                session_string = ?,
+                login_at = ?,
+                status = 'Active',
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (phone_number, session_string, timestamp, timestamp, telegram_id),
+        )
+        connection.commit()
+
+
+def mark_login_failed(telegram_id: int) -> None:
+    """Kembalikan status ke Pending setelah percobaan login gagal."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET status = 'Pending', updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (timestamp, telegram_id),
+        )
+        connection.commit()

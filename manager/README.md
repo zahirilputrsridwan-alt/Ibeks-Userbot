@@ -13,11 +13,11 @@ Fondasi awal yang tersedia:
 - Plugin loader otomatis
 - SQLite dengan tabel `users`
 - `/start` dan inline keyboard
-- Menu Akun Saya, Panduan, Tentang, dan placeholder Minta Akses
+- Menu Akun Saya, Panduan, Tentang, dan login melalui Minta Akses
 - Logging ke `manager/logs/manager.log`
 - Global error handler agar error handler tidak mematikan bot
-
-OTP, session Telegram, dan login akun Telegram sengaja belum dibuat.
+- Login Telegram dengan OTP dan dukungan Password 2FA
+- Penyimpanan `STRING_SESSION` hanya di SQLite setelah login berhasil
 
 ## Secrets
 
@@ -26,6 +26,9 @@ Tambahkan Secrets berikut:
 - `BOT_TOKEN`
 - `API_ID`
 - `API_HASH`
+
+`STRING_SESSION`, OTP, dan Password 2FA tidak pernah dikirim ke chat atau
+ditulis ke log.
 
 ## Menjalankan
 

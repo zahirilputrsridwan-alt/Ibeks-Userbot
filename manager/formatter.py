@@ -38,7 +38,12 @@ def welcome_text() -> str:
 
 def account_text(user_data: dict) -> str:
     status = user_data.get("status") or "Belum Aktif"
-    status_line = "🟢 Aktif" if status == "Aktif" else "🔴 Belum Aktif"
+    if status == "Active":
+        status_line = "🟢 Active"
+    elif status == "Pending":
+        status_line = "🟡 Pending"
+    else:
+        status_line = "🔴 Belum Aktif"
     return (
         "👤 Akun Saya\n\n"
         f"Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
