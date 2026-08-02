@@ -32,6 +32,7 @@ from database import (
 )
 from formatter import full_name
 from logger import log, safe_handler
+from plugins.approval import notify_owner
 from plugins.start.start import home_keyboard
 
 
@@ -190,7 +191,11 @@ async def _send_code(
     )
 
 
-async def _complete_login(state: LoginState, message: Message) -> None:
+async def _complete_login(
+    state: LoginState,
+    message: Message,
+    manager_client: Client,
+) -> None:
     if state.client is None or not state.phone_number:
         raise RuntimeError("State login tidak lengkap.")
     session_string = await state.client.export_session_string()
@@ -201,13 +206,22 @@ async def _complete_login(state: LoginState, message: Message) -> None:
     await _delete_message(state.password_message)
     await _finish_state(state.telegram_id)
     await message.reply(
-        "✅ Login Telegram berhasil.\n\n"
-        "Akun Anda sudah terdaftar di Manager Bot.",
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        "⏳ Permintaan Anda berhasil dikirim.\n\n"
+        "Mohon tunggu hingga Admin menyetujui akun Anda.\n\n"
+        "Status:\n"
+        "🟡 Menunggu Persetujuan\n\n"
+        "━━━━━━━━━━━━━━━━━━",
         reply_markup=home_keyboard(),
     )
+    await notify_owner(manager_client, state.telegram_id)
 
 
-async def _check_code(state: LoginState, message: Message) -> None:
+async def _check_code(
+    state: LoginState,
+    message: Message,
+    manager_client: Client,
+) -> None:
     if state.client is None or not state.phone_number or not state.phone_code_hash:
         raise RuntimeError("State kode login tidak lengkap.")
     state.code_message = message
@@ -265,7 +279,7 @@ async def _check_code(state: LoginState, message: Message) -> None:
         return
 
     try:
-        await _complete_login(state, message)
+        await _complete_login(state, message, manager_client)
     except Exception:
         log.exception("Error saat menyimpan session login user %s.", state.telegram_id)
         await _finish_state(state.telegram_id)
@@ -276,7 +290,11 @@ async def _check_code(state: LoginState, message: Message) -> None:
         )
 
 
-async def _check_password(state: LoginState, message: Message) -> None:
+async def _check_password(
+    state: LoginState,
+    message: Message,
+    manager_client: Client,
+) -> None:
     if state.client is None:
         raise RuntimeError("State client login tidak lengkap.")
     state.password_message = message
@@ -313,7 +331,7 @@ async def _check_password(state: LoginState, message: Message) -> None:
         return
 
     try:
-        await _complete_login(state, message)
+        await _complete_login(state, message, manager_client)
     except Exception:
         log.exception("Error saat menyimpan session 2FA user %s.", state.telegram_id)
         await _finish_state(state.telegram_id)
@@ -399,6 +417,6 @@ def setup(client):
                 reply_markup=_phone_request_keyboard(),
             )
         elif state.stage == "code":
-            await _check_code(state, message)
+            await _check_code(state, message, client)
         elif state.stage == "password":
-            await _check_password(state, message)
+            await _check_password(state, message, client)

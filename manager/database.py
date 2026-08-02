@@ -34,7 +34,10 @@ def init_db() -> None:
                 updated_at TEXT NOT NULL,
                 phone_number TEXT,
                 session_string TEXT,
-                login_at TEXT
+                login_at TEXT,
+                approval_status TEXT NOT NULL DEFAULT 'pending',
+                approved_by INTEGER,
+                approved_at TEXT
             )
             """
         )
@@ -46,6 +49,9 @@ def init_db() -> None:
             ("phone_number", "TEXT"),
             ("session_string", "TEXT"),
             ("login_at", "TEXT"),
+            ("approval_status", "TEXT NOT NULL DEFAULT 'pending'"),
+            ("approved_by", "INTEGER"),
+            ("approved_at", "TEXT"),
         ):
             if column not in existing_columns:
                 connection.execute(
@@ -60,7 +66,8 @@ def get_user(telegram_id: int) -> dict | None:
         row = connection.execute(
             """
             SELECT telegram_id, username, full_name, status, created_at, updated_at,
-                   phone_number, session_string, login_at
+                   phone_number, session_string, login_at, approval_status,
+                   approved_by, approved_at
             FROM users
             WHERE telegram_id = ?
             """,
@@ -111,6 +118,9 @@ def mark_login_pending(telegram_id: int, phone_number: str) -> None:
                 status = 'Pending',
                 session_string = NULL,
                 login_at = NULL,
+                approval_status = 'pending',
+                approved_by = NULL,
+                approved_at = NULL,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -134,6 +144,9 @@ def save_login_success(
                 session_string = ?,
                 login_at = ?,
                 status = 'Active',
+                approval_status = 'pending',
+                approved_by = NULL,
+                approved_at = NULL,
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -155,3 +168,40 @@ def mark_login_failed(telegram_id: int) -> None:
             (timestamp, telegram_id),
         )
         connection.commit()
+
+
+def approve_user(telegram_id: int, owner_id: int) -> dict | None:
+    """Setujui user yang masih menunggu persetujuan."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET approval_status = 'approved',
+                approved_by = ?,
+                approved_at = ?,
+                updated_at = ?
+            WHERE telegram_id = ? AND approval_status = 'pending'
+            """,
+            (owner_id, timestamp, timestamp, telegram_id),
+        )
+        connection.commit()
+    return get_user(telegram_id)
+
+
+def reject_user(telegram_id: int) -> dict | None:
+    """Tolak user dan hapus session Telegram yang tersimpan."""
+    timestamp = _now()
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE users
+            SET approval_status = 'rejected',
+                session_string = NULL,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (timestamp, telegram_id),
+        )
+        connection.commit()
+    return get_user(telegram_id)
