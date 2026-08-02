@@ -44,12 +44,21 @@ def account_text(user_data: dict) -> str:
         status_line = "🟡 Pending"
     else:
         status_line = "🔴 Belum Aktif"
+    userbot_status = user_data.get("userbot_status") or "Offline"
+    userbot_status_line = {
+        "Online": "🟢 Online",
+        "Starting": "🟡 Starting",
+        "Offline": "🔴 Offline",
+    }.get(userbot_status, f"🔴 {userbot_status}")
     return (
         "👤 Akun Saya\n\n"
         f"Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"Username : {display_username(user_data.get('username'))}\n"
         f"Telegram ID : {user_data.get('telegram_id')}\n"
         f"Status : {status_line}\n"
+        f"Userbot : {userbot_status_line}\n"
+        f"Mulai Terakhir : {display_date(user_data.get('last_started'))}\n"
+        f"Berhenti Terakhir : {display_date(user_data.get('last_stopped'))}\n"
         f"Tanggal Bergabung : {display_date(user_data.get('created_at'))}"
     )
 

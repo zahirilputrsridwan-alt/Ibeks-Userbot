@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 import fcntl
 import os
+import signal
 
 import pyrogram
 from pyrogram import Client
@@ -20,6 +21,7 @@ from config import (
 from database import init_db
 from loader import load_plugins
 from logger import install_global_error_handler, log
+from runner import UserbotRunner, set_runner
 
 
 def validate_config() -> None:
@@ -50,10 +52,19 @@ def acquire_instance_lock():
     return lock_file
 
 
+def _handle_shutdown_signal(signum, _frame) -> None:
+    """Biarkan ``finally`` menghentikan semua worker sebelum Manager keluar."""
+    log.info("Sinyal shutdown diterima (%s). Menutup Manager dengan aman.", signum)
+    raise KeyboardInterrupt
+
+
 def main() -> None:
     install_global_error_handler()
     lock_file = None
+    runner = UserbotRunner()
     try:
+        signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+        signal.signal(signal.SIGINT, _handle_shutdown_signal)
         lock_file = acquire_instance_lock()
         validate_config()
         init_db()
@@ -76,6 +87,8 @@ def main() -> None:
         stats = load_plugins(client)
         if stats["failed"]:
             log.error("Sebagian plugin gagal dimuat: %s", stats["failed"])
+        set_runner(runner)
+        runner.start()
         client.run()
     except KeyboardInterrupt:
         log.info("Manager Bot dihentikan oleh pengguna.")
@@ -83,6 +96,8 @@ def main() -> None:
         log.exception("Manager Bot berhenti karena error.")
         sys.exit(1)
     finally:
+        runner.stop_all()
+        set_runner(None)
         if lock_file is not None:
             lock_file.close()
         log.info("Manager Bot offline.")

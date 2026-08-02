@@ -37,7 +37,10 @@ def init_db() -> None:
                 login_at TEXT,
                 approval_status TEXT NOT NULL DEFAULT 'pending',
                 approved_by INTEGER,
-                approved_at TEXT
+                approved_at TEXT,
+                userbot_status TEXT NOT NULL DEFAULT 'Offline',
+                last_started TEXT,
+                last_stopped TEXT
             )
             """
         )
@@ -52,6 +55,9 @@ def init_db() -> None:
             ("approval_status", "TEXT NOT NULL DEFAULT 'pending'"),
             ("approved_by", "INTEGER"),
             ("approved_at", "TEXT"),
+            ("userbot_status", "TEXT NOT NULL DEFAULT 'Offline'"),
+            ("last_started", "TEXT"),
+            ("last_stopped", "TEXT"),
         ):
             if column not in existing_columns:
                 connection.execute(
@@ -67,7 +73,8 @@ def get_user(telegram_id: int) -> dict | None:
             """
             SELECT telegram_id, username, full_name, status, created_at, updated_at,
                    phone_number, session_string, login_at, approval_status,
-                   approved_by, approved_at
+                   approved_by, approved_at, userbot_status, last_started,
+                   last_stopped
             FROM users
             WHERE telegram_id = ?
             """,
@@ -121,6 +128,7 @@ def mark_login_pending(telegram_id: int, phone_number: str) -> None:
                 approval_status = 'pending',
                 approved_by = NULL,
                 approved_at = NULL,
+                userbot_status = 'Offline',
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -151,6 +159,7 @@ def save_login_success(
                 approval_status = ?,
                 approved_by = ?,
                 approved_at = ?,
+                userbot_status = 'Offline',
                 updated_at = ?
             WHERE telegram_id = ?
             """,
@@ -213,6 +222,7 @@ def reject_user(telegram_id: int) -> dict | None:
             UPDATE users
             SET approval_status = 'rejected',
                 session_string = NULL,
+                userbot_status = 'Offline',
                 updated_at = ?
             WHERE telegram_id = ? AND approval_status = 'pending'
             """,
@@ -222,3 +232,45 @@ def reject_user(telegram_id: int) -> dict | None:
         if cursor.rowcount != 1:
             return None
     return get_user(telegram_id)
+
+
+def list_users() -> list[dict]:
+    """Ambil semua user untuk rekonsiliasi lifecycle Userbot."""
+    with _connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT telegram_id, username, full_name, status, created_at, updated_at,
+                   phone_number, session_string, login_at, approval_status,
+                   approved_by, approved_at, userbot_status, last_started,
+                   last_stopped
+            FROM users
+            ORDER BY telegram_id
+            """
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def set_userbot_status(
+    telegram_id: int,
+    userbot_status: str,
+    *,
+    started: bool = False,
+    stopped: bool = False,
+) -> None:
+    """Simpan status runtime Userbot tanpa mengubah status akses user."""
+    timestamp = _now()
+    assignments = ["userbot_status = ?", "updated_at = ?"]
+    values: list[object] = [userbot_status, timestamp]
+    if started:
+        assignments.append("last_started = ?")
+        values.append(timestamp)
+    if stopped:
+        assignments.append("last_stopped = ?")
+        values.append(timestamp)
+    values.append(telegram_id)
+    with _connect() as connection:
+        connection.execute(
+            f"UPDATE users SET {', '.join(assignments)} WHERE telegram_id = ?",
+            values,
+        )
+        connection.commit()

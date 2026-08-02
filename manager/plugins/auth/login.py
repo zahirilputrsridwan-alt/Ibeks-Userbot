@@ -33,6 +33,7 @@ from database import (
 from formatter import full_name
 from logger import log, safe_handler
 from plugins.approval import notify_owner
+from runner import get_runner
 from plugins.start.start import home_keyboard
 
 
@@ -119,6 +120,9 @@ async def begin_login(user, message: Message) -> None:
     await _finish_state(telegram_id)
     _login_states[telegram_id] = LoginState(telegram_id=telegram_id)
     mark_login_pending(telegram_id, "")
+    runner = get_runner()
+    if runner:
+        runner.sync_user(telegram_id)
     await message.edit("📲 Minta Akses\n\nMenunggu nomor Telegram Anda.")
     await message.reply(
         "━━━━━━━━━━━━━━━━━━\n\n"
@@ -209,6 +213,9 @@ async def _complete_login(
         approval_status="approved" if is_owner else "pending",
         approved_by=OWNER_ID if is_owner else None,
     )
+    runner = get_runner()
+    if runner:
+        runner.sync_user(state.telegram_id)
     await _delete_message(state.code_message)
     await _delete_message(state.password_message)
     await _finish_state(state.telegram_id)

@@ -9,6 +9,7 @@ from config import OWNER_ID
 from database import approve_user, get_user, reject_user
 from formatter import display_date, display_username
 from logger import log, safe_handler
+from runner import get_runner
 
 
 def _approval_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
@@ -162,6 +163,9 @@ def setup(client):
                 "Anda sekarang dapat menggunakan layanan IBEKS USERBOT.\n\n"
                 "━━━━━━━━━━━━━━━━━━",
             )
+            runner = get_runner()
+            if runner:
+                runner.sync_user(telegram_id)
             return
 
         updated = reject_user(telegram_id)
@@ -183,3 +187,6 @@ def setup(client):
             "Silakan hubungi Admin jika merasa terjadi kesalahan.\n\n"
             "━━━━━━━━━━━━━━━━━━",
         )
+        runner = get_runner()
+        if runner:
+            runner.sync_user(telegram_id)

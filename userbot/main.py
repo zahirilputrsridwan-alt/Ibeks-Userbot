@@ -26,6 +26,7 @@ from config import (
     CMD_PREFIX,
     MAIN_FILE,
     RESTART_STATE_FILE,
+    RUNNER_READY_FILE,
 )
 from db import init_db
 from loader import load_plugins, plugin_filename
@@ -79,6 +80,23 @@ def _clear_restart_state() -> None:
             os.remove(RESTART_STATE_FILE)
     except Exception as exc:
         log.warning(f"[Main] Gagal menghapus state restart: {exc}")
+
+
+def _clear_runner_ready() -> None:
+    try:
+        if os.path.exists(RUNNER_READY_FILE):
+            os.remove(RUNNER_READY_FILE)
+    except Exception as exc:
+        log.warning(f"[Main] Gagal menghapus marker Runner: {exc}")
+
+
+def _mark_runner_ready() -> None:
+    try:
+        os.makedirs(os.path.dirname(RUNNER_READY_FILE), exist_ok=True)
+        with open(RUNNER_READY_FILE, "w", encoding="utf-8") as ready:
+            ready.write(str(os.getpid()))
+    except Exception as exc:
+        log.warning(f"[Main] Gagal menulis marker Runner: {exc}")
 
 
 def _userbot_access_decision(telegram_id: int) -> tuple[bool, str]:
@@ -142,6 +160,7 @@ def main() -> None:
     log.info(f"     💀 {BOT_NAME}")
     log.info(f"     📦 Version {VERSION}")
     log.info(f"╰━━━━━━━━━━━━━━━━━━━━━━╯")
+    _clear_runner_ready()
 
     # ── Validasi konfigurasi ──────────────────────────────────────────────────
     validate_config()
@@ -204,6 +223,7 @@ def main() -> None:
             return
 
         log_startup_info(client, me, plugin_stats)
+        _mark_runner_ready()
 
         # Kirim notifikasi restart jika bot baru saja dihidupkan ulang
         restart_state = _read_restart_state()
@@ -230,6 +250,7 @@ def main() -> None:
         log.exception(f"[Main] Error tidak terduga: {exc}")
         sys.exit(1)
     finally:
+        _clear_runner_ready()
         log.info("[Main] IBEKS USERBOT offline.")
 
 

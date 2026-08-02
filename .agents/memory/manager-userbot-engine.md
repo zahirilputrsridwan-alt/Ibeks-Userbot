@@ -7,4 +7,4 @@ Each logged-in account must run as its own child process, with its session passe
 
 **Why:** Userbot globals such as SQLite, logs, restart state, and clone backups are process-local paths; sharing them across accounts causes data leakage and lifecycle collisions.
 
-**How to apply:** Keep lifecycle state in Manager SQLite, guard each user with an async lock, use internal locked start/stop helpers to avoid restart deadlocks, and always terminate supervisor tasks and child processes during Manager shutdown. Manual Stop suppresses reconnect until Start/Restart, while expired or suspended access must block all start paths.
+**How to apply:** Keep lifecycle state in Manager SQLite, guard each user with an async lock, use internal locked start/stop helpers to avoid restart deadlocks, and always terminate supervisor tasks and child processes during Manager shutdown. Handle SIGTERM explicitly so workflow restarts do not orphan workers. Manual Stop suppresses reconnect until Start/Restart, while expired or suspended access must block all start paths.
