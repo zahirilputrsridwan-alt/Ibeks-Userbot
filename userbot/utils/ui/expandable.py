@@ -13,6 +13,8 @@ from typing import Optional
 from pyrogram.raw.core import TLObject
 from pyrogram.raw.core.primitives import Int
 
+from utils.logger import log
+
 
 def _utf16_length(value: str) -> int:
     """Return Telegram's UTF-16 code-unit length for a Python string."""
@@ -66,11 +68,22 @@ class ExpandableBlockquoteEntity:
         self._client = None
 
     async def write(self) -> _RawExpandableBlockquote:
-        return _RawExpandableBlockquote(
+        raw = _RawExpandableBlockquote(
             collapsed=self.collapsed,
             offset=self.offset,
             length=self.length,
         )
+        log.info(
+            "[Expandable] MTProto constructor prepared: "
+            "types.MessageEntityBlockquote#%08x flags=%s "
+            "collapsed=%s offset=%s length=%s.",
+            raw.ID,
+            1 if raw.collapsed else 0,
+            raw.collapsed,
+            raw.offset,
+            raw.length,
+        )
+        return raw
 
 
 def build_expandable(
@@ -119,13 +132,32 @@ async def send_expandable(
     )
     kwargs = dict(kwargs)
     kwargs.pop("parse_mode", None)
-    return await client.send_message(
+    log.info(
+        "[Expandable] Sending entity: constructor="
+        "types.MessageEntityBlockquote#%08x flags=%s collapsed=%s "
+        "offset=%s length=%s chat_id=%s.",
+        _RawExpandableBlockquote.ID,
+        1 if entities[0].collapsed else 0,
+        entities[0].collapsed,
+        entities[0].offset,
+        entities[0].length,
+        chat_id,
+    )
+    message = await client.send_message(
         chat_id,
         text,
         parse_mode=None,
         entities=entities,
         **kwargs,
     )
+    log.info(
+        "[Expandable] Telegram send_message returned: message_id=%s "
+        "chat_id=%s; entity was submitted with collapsed=%s.",
+        getattr(message, "id", "unknown"),
+        chat_id,
+        entities[0].collapsed,
+    )
+    return message
 
 
 async def edit_expandable(
