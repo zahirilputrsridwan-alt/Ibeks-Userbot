@@ -14,7 +14,14 @@ from pyrogram.errors import (
     PhoneNumberInvalid,
     SessionPasswordNeeded,
 )
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 
 from config import API_HASH, API_ID
 from database import (
@@ -54,11 +61,27 @@ def _login_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def _masked_phone(phone_number: str | None) -> str:
-    """Buat nomor aman untuk log tanpa mencetak nomor lengkap."""
+def _phone_request_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("📱 Kirim Nomor Saya", request_contact=True)],
+            [KeyboardButton("❌ Batalkan")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
+def _normalize_contact_phone(phone_number: str | None) -> str | None:
+    """Normalisasi nomor dari Contact Telegram tanpa menerima input manual."""
     if not phone_number:
-        return "unknown"
-    return f"{phone_number[:3]}***{phone_number[-2:]}"
+        return None
+    normalized = re.sub(r"[ ()-]", "", phone_number.strip())
+    if normalized.startswith("00"):
+        normalized = "+" + normalized[2:]
+    elif normalized.isdigit():
+        normalized = "+" + normalized
+    return normalized if PHONE_PATTERN.fullmatch(normalized) else None
 
 
 async def _safe_disconnect(client: Client | None) -> None:
@@ -95,25 +118,22 @@ async def begin_login(user, message: Message) -> None:
     await _finish_state(telegram_id)
     _login_states[telegram_id] = LoginState(telegram_id=telegram_id)
     mark_login_pending(telegram_id, "")
-    await message.edit(
-        "📲 Minta Akses\n\n"
-        "Masukkan nomor telepon Telegram Anda dalam format internasional.\n"
-        "Contoh: `+628123456789`",
-        reply_markup=_login_keyboard(),
+    await message.edit("📲 Minta Akses\n\nMenunggu nomor Telegram Anda.")
+    await message.reply(
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        "📱 Kirim Nomor Telegram\n\n"
+        'Silakan tekan tombol "Kirim Nomor Saya".\n\n'
+        "Telegram akan mengirim nomor Anda secara otomatis.\n\n"
+        "━━━━━━━━━━━━━━━━━━",
+        reply_markup=_phone_request_keyboard(),
     )
 
 
-async def _send_code(state: LoginState, message: Message) -> None:
-    raw_phone = (message.text or "").strip()
-    phone_number = re.sub(r"[ ()-]", "", raw_phone)
-    if not PHONE_PATTERN.fullmatch(phone_number):
-        await message.reply(
-            "❌ Format nomor tidak valid.\n"
-            "Gunakan format internasional, contoh: `+628123456789`.",
-            reply_markup=_login_keyboard(),
-        )
-        return
-
+async def _send_code(
+    state: LoginState,
+    message: Message,
+    phone_number: str,
+) -> None:
     client = Client(
         name=f"ibeks_login_{state.telegram_id}",
         api_id=API_ID,
@@ -129,7 +149,7 @@ async def _send_code(state: LoginState, message: Message) -> None:
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            "❌ Nomor Telegram tidak valid. Silakan coba lagi.",
+            "❌ Nomor Telegram tidak valid. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -166,7 +186,7 @@ async def _send_code(state: LoginState, message: Message) -> None:
     await message.reply(
         "🔐 Kode login sudah dikirim oleh Telegram.\n\n"
         "Masukkan kode yang Anda terima.",
-        reply_markup=_login_keyboard(),
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 
@@ -321,6 +341,40 @@ def setup(client):
             )
 
     @client.on_message(
+        filters.private & filters.contact,
+        group=0,
+    )
+    @safe_handler
+    async def login_contact_handler(client, message):
+        if not message.from_user or not message.contact:
+            return
+        state = _login_states.get(message.from_user.id)
+        if not state or state.stage != "phone":
+            return
+
+        contact = message.contact
+        if contact.user_id != message.from_user.id:
+            await message.reply(
+                '❌ Gunakan tombol "Kirim Nomor Saya".',
+                reply_markup=_phone_request_keyboard(),
+            )
+            return
+
+        phone_number = _normalize_contact_phone(contact.phone_number)
+        if not phone_number:
+            log.warning(
+                "Contact Telegram tidak valid pada login user %s.",
+                message.from_user.id,
+            )
+            await message.reply(
+                "❌ Nomor Telegram tidak valid. Silakan gunakan tombol lagi.",
+                reply_markup=_phone_request_keyboard(),
+            )
+            return
+
+        await _send_code(state, message, phone_number)
+
+    @client.on_message(
         filters.private & filters.text & ~filters.command("start"),
         group=0,
     )
@@ -332,7 +386,18 @@ def setup(client):
         if not state or state.stage not in LOGIN_STAGES:
             return
         if state.stage == "phone":
-            await _send_code(state, message)
+            if message.text.strip() == "❌ Batalkan":
+                await _finish_state(message.from_user.id)
+                mark_login_failed(message.from_user.id)
+                await message.reply(
+                    "❌ Proses login dibatalkan.",
+                    reply_markup=ReplyKeyboardRemove(),
+                )
+                return
+            await message.reply(
+                '❌ Gunakan tombol "Kirim Nomor Saya".',
+                reply_markup=_phone_request_keyboard(),
+            )
         elif state.stage == "code":
             await _check_code(state, message)
         elif state.stage == "password":

@@ -7,4 +7,4 @@ Each Telegram account login must use a separate in-memory Pyrogram client and pe
 
 **Why:** Sharing a client or retaining OTP/password state across users could authenticate the wrong account or expose credentials.
 
-**How to apply:** Expire and clean up the state on success, failure, cancellation, timeout, or flood wait. Clear phone-code hashes and password/OTP variables after each attempt. Keep OTP and password input out of logs. Delete the user's OTP message only after the Telegram login succeeds; for 2FA accounts, retain it until the password step succeeds.
+**How to apply:** Expire and clean up the state on success, failure, cancellation, timeout, or flood wait. Clear phone-code hashes and password/OTP variables after each attempt. Keep OTP and password input out of logs. Delete the user's OTP message only after the Telegram login succeeds; for 2FA accounts, retain it until the password step succeeds. Collect the phone through Telegram's own contact request and accept it only when `contact.user_id` matches the requesting Manager user.
