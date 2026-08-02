@@ -47,6 +47,7 @@ class LoginState:
     client: Client | None = None
     phone_number: str | None = None
     phone_code_hash: str | None = None
+    otp_message_id: int | None = None
     stage: str = "phone"
     expires_at: float = 0.0
     cleanup_task: asyncio.Task | None = None
@@ -89,8 +90,25 @@ async def _remove_state(user_id: int) -> LoginState | None:
         # Hapus referensi OTP/hash/nomor dari state sesegera mungkin.
         state.phone_code_hash = None
         state.phone_number = None
+        state.otp_message_id = None
         state.client = None
     return state
+
+
+async def _delete_otp_message(client: Client, state: LoginState) -> None:
+    """Hapus pesan OTP yang sudah berhasil dipakai untuk login."""
+    if not state.otp_message_id:
+        return
+    try:
+        await client.delete_messages(state.manager_user_id, state.otp_message_id)
+    except Exception as exc:
+        log.warning(
+            "Gagal menghapus pesan OTP user %s setelah login: %s",
+            state.manager_user_id,
+            exc,
+        )
+    finally:
+        state.otp_message_id = None
 
 
 async def _expire_login(client, user_id: int) -> None:
@@ -200,7 +218,12 @@ async def _handle_phone(client, message, state: LoginState) -> None:
     )
 
 
-async def _finish_login(message, state: LoginState, logged_user) -> None:
+async def _finish_login(
+    manager_client: Client,
+    message,
+    state: LoginState,
+    logged_user,
+) -> None:
     session_string = await state.client.export_session_string()
     if not hasattr(logged_user, "id"):
         logged_user = await state.client.get_me()
@@ -216,6 +239,7 @@ async def _finish_login(message, state: LoginState, logged_user) -> None:
         ) or logged_user.username or "Pengguna Telegram",
     )
     ensure_login_membership(message.from_user.id)
+    await _delete_otp_message(manager_client, state)
     await _remove_state(message.from_user.id)
     started, start_result = await start_userbot(message.from_user.id)
     ensure_supervisor(message.from_user.id)
@@ -238,13 +262,14 @@ async def _handle_otp(client, message, state: LoginState) -> None:
         otp = ""
         await message.reply("❌ Format OTP tidak valid. Masukkan 5 atau 6 digit.")
         return
+    state.otp_message_id = message.id
     try:
         logged_user = await state.client.sign_in(
             state.phone_number,
             state.phone_code_hash,
             otp,
         )
-        await _finish_login(message, state, logged_user)
+        await _finish_login(client, message, state, logged_user)
     except SessionPasswordNeeded:
         state.stage = "password"
         await message.reply(
@@ -282,7 +307,7 @@ async def _handle_password(client, message, state: LoginState) -> None:
     try:
         logged_user = await state.client.check_password(password)
         password = ""
-        await _finish_login(message, state, logged_user)
+        await _finish_login(client, message, state, logged_user)
     except PasswordHashInvalid:
         password = ""
         await message.reply("❌ Password Dua Langkah salah. Silakan coba lagi.")
