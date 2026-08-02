@@ -117,11 +117,24 @@ async def _send_help(client, payload: dict) -> bool:
     bot = await client.get_me()
     chat_id = payload["chat_id"]
     if int(chat_id) == int(bot.id):
+        # Telegram tidak mengizinkan bot mengirim pesan ke dirinya sendiri.
+        # Ini terjadi jika Userbot menjalankan .help di private chat Manager.
+        # Kirim ke akun Userbot peminta agar command tetap menghasilkan UI.
+        fallback_chat_id = payload["user_id"]
+        if int(fallback_chat_id) == int(bot.id):
+            log.warning(
+                "[Help] Request tidak dapat dikirim: chat_id dan user_id "
+                "sama-sama akun BOT_TOKEN (%s).",
+                bot.id,
+            )
+            return False
         log.warning(
-            "[Help] Request diabaikan: chat_id=%s adalah akun BOT_TOKEN sendiri.",
+            "[Help] chat_id=%s adalah akun BOT_TOKEN sendiri; "
+            "menggunakan fallback user_id=%s.",
             chat_id,
+            fallback_chat_id,
         )
-        return False
+        chat_id = fallback_chat_id
 
     context = HelpContext(
         user_id=payload["user_id"],
@@ -153,6 +166,12 @@ async def _send_help(client, payload: dict) -> bool:
 async def _watch_requests(client) -> None:
     while True:
         try:
+            # start_help_bridge() dipasang sebelum client.run(). Jangan
+            # mengonsumsi request ketika session Bot belum siap; request harus
+            # tetap menunggu sampai BOT_TOKEN benar-benar connected.
+            if not client.is_connected:
+                await asyncio.sleep(REQUEST_POLL_INTERVAL)
+                continue
             for path in _request_paths():
                 payload = _read_request(path)
                 if payload is None:

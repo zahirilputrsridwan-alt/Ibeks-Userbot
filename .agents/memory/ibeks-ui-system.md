@@ -22,3 +22,9 @@ description: Shared Telegram presentation rules for text-only plugins.
 **Why:** Inline keyboards must be rendered and edited by the Manager bot; the Userbot must remain responsible for all other commands and runtime behavior.
 
 **How to apply:** Consume each IPC request once, isolate bridge errors from polling, and keep the bridge limited to Help so login, approval, Runner, and other plugins stay unchanged.
+
+**Runtime edge cases:** A request targeting the Manager bot's own private chat must fall back to the requesting Userbot's ID; the watcher must not consume requests until the Manager client is connected.
+
+**Why:** Telegram rejects bot-to-self messages, and the bridge is started before `client.run()` completes, so processing during boot can otherwise drop valid requests.
+
+**How to apply:** Preserve the request until `client.is_connected` is true, then use `user_id` only for the bot-self target; normal user/group chats continue using their original `chat_id`.
