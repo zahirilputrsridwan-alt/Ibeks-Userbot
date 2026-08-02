@@ -403,11 +403,23 @@ def renew_subscription(telegram_id: int, days: int | None) -> dict | None:
             if row["expired_at"]:
                 try:
                     current_expiry = datetime.fromisoformat(row["expired_at"])
+                    if current_expiry.tzinfo is None:
+                        current_expiry = current_expiry.replace(tzinfo=timezone.utc)
                 except ValueError:
                     current_expiry = None
             base = max(current_expiry or now, now)
-            expired_at = (base + timedelta(days=days)).isoformat(timespec="seconds")
-            remaining = days
+            new_expiry = base + timedelta(days=days)
+            expired_at = new_expiry.isoformat(timespec="seconds")
+            remaining = max(
+                0,
+                int(
+                    (
+                        new_expiry - now
+                    ).total_seconds()
+                    + 86399
+                )
+                // 86400,
+            )
         timestamp = _now()
         connection.execute(
             """

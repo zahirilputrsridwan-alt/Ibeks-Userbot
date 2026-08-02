@@ -270,10 +270,19 @@ def _subscription_text(user: dict) -> str:
     )
 
 
+def _subscription_success_text(user: dict) -> str:
+    remaining = remaining_days(user)
+    return (
+        "✅ Subscription berhasil diperbarui.\n\n"
+        f"Plan: {user.get('plan') or 'FREE'}\n"
+        f"Expired: {expiry_label(user)}\n"
+        f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}"
+    )
+
+
 def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
     telegram_id = int(user["telegram_id"])
     current_plan = user.get("plan") or "FREE"
-    current_index = PLANS.index(current_plan) if current_plan in PLANS else 0
     rows = [
         [
             InlineKeyboardButton("➕ 7 Hari", callback_data=f"panel:renew:7:{telegram_id}"),
@@ -297,7 +306,7 @@ def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
         ]
     )
     rows.append([InlineKeyboardButton(f"Plan Saat Ini: {current_plan}", callback_data="panel:noop")])
-    rows.append([InlineKeyboardButton("⬅️ Detail User", callback_data=f"panel:user:{telegram_id}")])
+    rows.append([InlineKeyboardButton("⬅️ Kembali", callback_data=f"panel:user:{telegram_id}")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -529,7 +538,7 @@ def setup(client):
             if was_expired:
                 log.info("[Subscription] Restore telegram_id=%s.", telegram_id)
             await query.message.edit(
-                _subscription_text(updated),
+                _subscription_success_text(updated),
                 reply_markup=_subscription_keyboard(updated),
             )
         elif action == "plan":
@@ -551,7 +560,7 @@ def setup(client):
                 plan,
             )
             await query.message.edit(
-                _subscription_text(updated),
+                _subscription_success_text(updated),
                 reply_markup=_subscription_keyboard(updated),
             )
         elif action in {"upgrade", "downgrade"}:
@@ -581,7 +590,7 @@ def setup(client):
                 target_plan,
             )
             await query.message.edit(
-                _subscription_text(updated),
+                _subscription_success_text(updated),
                 reply_markup=_subscription_keyboard(updated),
             )
         elif action == "noop":
