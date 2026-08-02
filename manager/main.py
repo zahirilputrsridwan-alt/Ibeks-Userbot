@@ -22,6 +22,7 @@ from database import init_db
 from loader import load_plugins
 from logger import install_global_error_handler, log
 from runner import UserbotRunner, set_runner
+from subscription import check_all_sync, start_checker
 
 
 def validate_config() -> None:
@@ -69,6 +70,7 @@ def main() -> None:
         validate_config()
         init_db()
         log.info("✓ Database SQLite siap.")
+        check_all_sync()
 
         client = Client(
             name="ibeks_manager_bot",
@@ -89,6 +91,7 @@ def main() -> None:
             log.error("Sebagian plugin gagal dimuat: %s", stats["failed"])
         set_runner(runner)
         runner.start()
+        start_checker(client)
         client.run()
     except KeyboardInterrupt:
         log.info("Manager Bot dihentikan oleh pengguna.")

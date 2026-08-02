@@ -28,6 +28,7 @@ from database import (
     set_userbot_status,
 )
 from logger import log
+from subscription import is_subscription_active
 
 
 ONLINE = "Online"
@@ -74,6 +75,7 @@ class UserbotRunner:
             and user.get("session_string")
             and user.get("approval_status") == "approved"
             and user.get("status") == "Active"
+            and is_subscription_active(user)
         )
 
     def start(self) -> None:

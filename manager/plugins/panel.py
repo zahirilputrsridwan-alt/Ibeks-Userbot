@@ -11,14 +11,17 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import OWNER_ID, USERBOT_RUNTIME_DIR
 from database import (
+    change_plan,
     delete_user,
     get_user,
     list_users,
+    renew_subscription,
     set_user_status,
 )
 from formatter import display_date, display_username
 from logger import log, safe_handler
 from runner import OFFLINE, ONLINE, STARTING, get_runner, running_clients
+from subscription import PLANS, expiry_label, remaining_days
 
 
 PAGE_SIZE = 8
@@ -101,6 +104,7 @@ def _panel_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton("📊 Statistik", callback_data="panel:stats"),
                 InlineKeyboardButton("♻ Refresh", callback_data="panel:refresh"),
             ],
+            [InlineKeyboardButton("📅 Subscription", callback_data="panel:subscriptions:0")],
         ]
     )
 
@@ -125,6 +129,29 @@ def _user_list_text(users: list[dict], title: str, page: int = 0) -> str:
                 f"   {_status_label(user.get('userbot_status'))} · "
                 f"{user.get('status') or 'Belum Aktif'}",
                 f"   Login: {display_date(user.get('login_at'))}",
+                "",
+            ]
+        )
+    total_pages = (len(users) + PAGE_SIZE - 1) // PAGE_SIZE
+    lines.append(f"Halaman {page + 1}/{total_pages}")
+    return "\n".join(lines)
+
+
+def _subscription_list_text(users: list[dict], page: int = 0) -> str:
+    if not users:
+        return "📅 Subscription\n\nTidak ada user."
+    start = page * PAGE_SIZE
+    selected = users[start : start + PAGE_SIZE]
+    lines = ["📅 Subscription", ""]
+    for user in selected:
+        remaining = remaining_days(user)
+        lines.extend(
+            [
+                f"👤 {user.get('full_name') or 'Tidak diketahui'}",
+                f"   Plan: {user.get('plan') or 'FREE'}",
+                f"   Expired: {expiry_label(user)}",
+                f"   Sisa Hari: {'Lifetime' if remaining == -1 else remaining}",
+                f"   Status: {user.get('status') or 'Belum Aktif'}",
                 "",
             ]
         )
@@ -174,6 +201,10 @@ def _detail_text(user: dict) -> str:
         f"Telegram ID: {user['telegram_id']}\n"
         f"Nomor: {user.get('phone_number') or 'Tidak tersedia'}\n"
         f"Status Approval: {user.get('approval_status') or 'pending'}\n"
+        f"Plan: {user.get('plan') or 'FREE'}\n"
+        f"Expired: {expiry_label(user)}\n"
+        f"Sisa Hari: {'Lifetime' if remaining_days(user) == -1 else remaining_days(user)}\n"
+        f"Subscription Status: {user.get('status') or 'Belum Aktif'}\n"
         f"Status Userbot: {_status_label(user.get('userbot_status'))}\n"
         f"Login Terakhir: {display_date(user.get('login_at'))}\n"
         f"Runtime: {runtime}\n"
@@ -203,6 +234,12 @@ def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
+                "📅 Subscription",
+                callback_data=f"panel:subscription:{telegram_id}",
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "❌ Suspend",
                 callback_data=f"panel:suspend:{telegram_id}",
             ),
@@ -218,6 +255,49 @@ def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
             "✅ Aktifkan",
             callback_data=f"panel:activate:{telegram_id}",
         )
+    return InlineKeyboardMarkup(rows)
+
+
+def _subscription_text(user: dict) -> str:
+    remaining = remaining_days(user)
+    return (
+        "📅 Subscription\n\n"
+        f"Nama: {user.get('full_name') or 'Tidak diketahui'}\n"
+        f"Plan: {user.get('plan') or 'FREE'}\n"
+        f"Expired: {expiry_label(user)}\n"
+        f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}\n"
+        f"Status: {user.get('status') or 'Belum Aktif'}"
+    )
+
+
+def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
+    telegram_id = int(user["telegram_id"])
+    current_plan = user.get("plan") or "FREE"
+    current_index = PLANS.index(current_plan) if current_plan in PLANS else 0
+    rows = [
+        [
+            InlineKeyboardButton("➕ 7 Hari", callback_data=f"panel:renew:7:{telegram_id}"),
+            InlineKeyboardButton("➕ 30 Hari", callback_data=f"panel:renew:30:{telegram_id}"),
+        ],
+        [
+            InlineKeyboardButton("➕ 90 Hari", callback_data=f"panel:renew:90:{telegram_id}"),
+            InlineKeyboardButton("♾ Lifetime", callback_data=f"panel:renew:lifetime:{telegram_id}"),
+        ],
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                "⬆ Upgrade Plan",
+                callback_data=f"panel:upgrade:{telegram_id}",
+            ),
+            InlineKeyboardButton(
+                "⬇ Downgrade Plan",
+                callback_data=f"panel:downgrade:{telegram_id}",
+            ),
+        ]
+    )
+    rows.append([InlineKeyboardButton(f"Plan Saat Ini: {current_plan}", callback_data="panel:noop")])
+    rows.append([InlineKeyboardButton("⬅️ Detail User", callback_data=f"panel:user:{telegram_id}")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -353,7 +433,8 @@ def setup(client):
         filters.regex(
             r"^panel:(refresh|online|pending|stats|search|users:\d+|user:\d+|"
             r"start:\d+|stop:\d+|restart:\d+|suspend:\d+|activate:\d+|"
-            r"delete:\d+|delete_confirm:\d+)$"
+            r"subscription:\d+|subscriptions:\d+|renew:(7|30|90|lifetime):\d+|"
+            r"upgrade:\d+|downgrade:\d+|noop|delete:\d+|delete_confirm:\d+)$"
         )
     )
     @safe_handler
@@ -401,6 +482,110 @@ def setup(client):
         elif action == "user":
             await query.answer()
             await _show_detail(query, int(values[0]))
+        elif action == "subscriptions":
+            await query.answer()
+            users = _users()
+            page = int(values[0])
+            await query.message.edit(
+                _subscription_list_text(users, page),
+                reply_markup=_user_list_keyboard(
+                    users,
+                    page,
+                    back_callback="panel:refresh",
+                ),
+            )
+        elif action == "subscription":
+            await query.answer()
+            user = get_user(int(values[0]))
+            if not user or (OWNER_ID and int(values[0]) == OWNER_ID):
+                await query.answer("User tidak ditemukan.", show_alert=True)
+                return
+            await query.message.edit(
+                _subscription_text(user),
+                reply_markup=_subscription_keyboard(user),
+            )
+        elif action == "renew":
+            telegram_id = int(values[1])
+            user = get_user(telegram_id)
+            if not user or (OWNER_ID and telegram_id == OWNER_ID):
+                await query.answer("User tidak ditemukan.", show_alert=True)
+                return
+            renewal = values[0]
+            days = None if renewal == "lifetime" else int(renewal)
+            was_expired = user.get("status") == "Expired"
+            updated = renew_subscription(telegram_id, days)
+            if not updated:
+                await query.answer("Renew gagal.", show_alert=True)
+                return
+            runner = get_runner()
+            if runner:
+                runner.sync_user(telegram_id)
+            await query.answer("Subscription diperpanjang.")
+            log.info(
+                "[Subscription] Renew telegram_id=%s days=%s.",
+                telegram_id,
+                "lifetime" if days is None else days,
+            )
+            if was_expired:
+                log.info("[Subscription] Restore telegram_id=%s.", telegram_id)
+            await query.message.edit(
+                _subscription_text(updated),
+                reply_markup=_subscription_keyboard(updated),
+            )
+        elif action == "plan":
+            plan = values[0]
+            telegram_id = int(values[1])
+            user = get_user(telegram_id)
+            if not user or (OWNER_ID and telegram_id == OWNER_ID):
+                await query.answer("User tidak ditemukan.", show_alert=True)
+                return
+            updated = change_plan(telegram_id, plan)
+            if not updated:
+                await query.answer("Plan gagal diubah.", show_alert=True)
+                return
+            await query.answer(f"Plan diubah ke {plan}.")
+            log.info(
+                "[Subscription] Plan Changed telegram_id=%s from=%s to=%s.",
+                telegram_id,
+                user.get("plan") or "FREE",
+                plan,
+            )
+            await query.message.edit(
+                _subscription_text(updated),
+                reply_markup=_subscription_keyboard(updated),
+            )
+        elif action in {"upgrade", "downgrade"}:
+            telegram_id = int(values[0])
+            user = get_user(telegram_id)
+            if not user or (OWNER_ID and telegram_id == OWNER_ID):
+                await query.answer("User tidak ditemukan.", show_alert=True)
+                return
+            current_plan = user.get("plan") or "FREE"
+            if current_plan not in PLANS:
+                current_plan = "FREE"
+            index = PLANS.index(current_plan)
+            target_index = index + (1 if action == "upgrade" else -1)
+            if target_index < 0 or target_index >= len(PLANS):
+                await query.answer("Tidak ada perubahan plan.", show_alert=True)
+                return
+            target_plan = PLANS[target_index]
+            updated = change_plan(telegram_id, target_plan)
+            if not updated:
+                await query.answer("Plan gagal diubah.", show_alert=True)
+                return
+            await query.answer(f"Plan diubah ke {target_plan}.")
+            log.info(
+                "[Subscription] Plan Changed telegram_id=%s from=%s to=%s.",
+                telegram_id,
+                current_plan,
+                target_plan,
+            )
+            await query.message.edit(
+                _subscription_text(updated),
+                reply_markup=_subscription_keyboard(updated),
+            )
+        elif action == "noop":
+            await query.answer()
         elif action == "delete":
             telegram_id = int(values[0])
             user = get_user(telegram_id)

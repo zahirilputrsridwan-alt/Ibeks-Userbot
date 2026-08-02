@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from config import DATABASE_PATH
@@ -11,6 +11,12 @@ from config import DATABASE_PATH
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _in_days(days: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat(
+        timespec="seconds"
+    )
 
 
 def _connect() -> sqlite3.Connection:
@@ -40,7 +46,12 @@ def init_db() -> None:
                 approved_at TEXT,
                 userbot_status TEXT NOT NULL DEFAULT 'Offline',
                 last_started TEXT,
-                last_stopped TEXT
+                last_stopped TEXT,
+                plan TEXT NOT NULL DEFAULT 'FREE',
+                expired_at TEXT,
+                remaining_days INTEGER NOT NULL DEFAULT 0,
+                last_renew TEXT,
+                last_check TEXT
             )
             """
         )
@@ -58,11 +69,33 @@ def init_db() -> None:
             ("userbot_status", "TEXT NOT NULL DEFAULT 'Offline'"),
             ("last_started", "TEXT"),
             ("last_stopped", "TEXT"),
+            ("plan", "TEXT NOT NULL DEFAULT 'FREE'"),
+            ("expired_at", "TEXT"),
+            ("remaining_days", "INTEGER NOT NULL DEFAULT 0"),
+            ("last_renew", "TEXT"),
+            ("last_check", "TEXT"),
         ):
             if column not in existing_columns:
                 connection.execute(
                     f"ALTER TABLE users ADD COLUMN {column} {definition}"
                 )
+        connection.execute(
+            "UPDATE users SET plan = 'FREE' WHERE plan IS NULL OR plan = ''"
+        )
+        connection.execute(
+            """
+            UPDATE users
+            SET expired_at = ?,
+                remaining_days = 30,
+                last_renew = ?,
+                status = 'Active'
+            WHERE approval_status = 'approved'
+              AND session_string IS NOT NULL
+              AND expired_at IS NULL
+              AND COALESCE(remaining_days, 0) = 0
+            """,
+            (_in_days(30), _now()),
+        )
         connection.commit()
 
 
@@ -73,8 +106,9 @@ def get_user(telegram_id: int) -> dict | None:
             """
             SELECT telegram_id, username, full_name, status, created_at, updated_at,
                    phone_number, session_string, login_at, approval_status,
-                   approved_by, approved_at, userbot_status, last_started,
-                   last_stopped
+                    approved_by, approved_at, userbot_status, last_started,
+                    last_stopped, plan, expired_at, remaining_days, last_renew,
+                    last_check
             FROM users
             WHERE telegram_id = ?
             """,
@@ -202,10 +236,24 @@ def approve_user(telegram_id: int, owner_id: int) -> dict | None:
             SET approval_status = 'approved',
                 approved_by = ?,
                 approved_at = ?,
+                plan = COALESCE(plan, 'FREE'),
+                expired_at = COALESCE(expired_at, ?),
+                remaining_days = CASE
+                    WHEN expired_at IS NULL THEN 30
+                    ELSE remaining_days
+                END,
+                last_renew = CASE
+                    WHEN expired_at IS NULL THEN ?
+                    ELSE last_renew
+                END,
+                status = CASE
+                    WHEN expired_at IS NULL THEN 'Active'
+                    ELSE status
+                END,
                 updated_at = ?
             WHERE telegram_id = ? AND approval_status = 'pending'
             """,
-            (owner_id, timestamp, timestamp, telegram_id),
+            (owner_id, timestamp, _in_days(30), timestamp, timestamp, telegram_id),
         )
         connection.commit()
         if cursor.rowcount != 1:
@@ -241,8 +289,9 @@ def list_users() -> list[dict]:
             """
             SELECT telegram_id, username, full_name, status, created_at, updated_at,
                    phone_number, session_string, login_at, approval_status,
-                   approved_by, approved_at, userbot_status, last_started,
-                   last_stopped
+                    approved_by, approved_at, userbot_status, last_started,
+                    last_stopped, plan, expired_at, remaining_days, last_renew,
+                    last_check
             FROM users
             ORDER BY telegram_id
             """
@@ -303,3 +352,90 @@ def delete_user(telegram_id: int) -> bool:
         )
         connection.commit()
     return cursor.rowcount == 1
+
+
+def update_subscription_state(
+    telegram_id: int,
+    *,
+    status: str | None = None,
+    remaining_days: int | None = None,
+    last_check: str | None = None,
+) -> dict | None:
+    """Simpan hasil pemeriksaan subscription tanpa menyentuh session/approval."""
+    assignments = ["updated_at = ?"]
+    values: list[object] = [_now()]
+    if status is not None:
+        assignments.append("status = ?")
+        values.append(status)
+    if remaining_days is not None:
+        assignments.append("remaining_days = ?")
+        values.append(remaining_days)
+    if last_check is not None:
+        assignments.append("last_check = ?")
+        values.append(last_check)
+    values.append(telegram_id)
+    with _connect() as connection:
+        cursor = connection.execute(
+            f"UPDATE users SET {', '.join(assignments)} WHERE telegram_id = ?",
+            values,
+        )
+        connection.commit()
+        if cursor.rowcount != 1:
+            return None
+    return get_user(telegram_id)
+
+
+def renew_subscription(telegram_id: int, days: int | None) -> dict | None:
+    """Perpanjang dari expiry aktif atau dari waktu sekarang; None = lifetime."""
+    now = datetime.now(timezone.utc)
+    with _connect() as connection:
+        row = connection.execute(
+            "SELECT expired_at FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        ).fetchone()
+        if not row:
+            return None
+        if days is None:
+            expired_at = None
+            remaining = -1
+        else:
+            current_expiry = None
+            if row["expired_at"]:
+                try:
+                    current_expiry = datetime.fromisoformat(row["expired_at"])
+                except ValueError:
+                    current_expiry = None
+            base = max(current_expiry or now, now)
+            expired_at = (base + timedelta(days=days)).isoformat(timespec="seconds")
+            remaining = days
+        timestamp = _now()
+        connection.execute(
+            """
+            UPDATE users
+            SET expired_at = ?,
+                remaining_days = ?,
+                last_renew = ?,
+                status = 'Active',
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (expired_at, remaining, timestamp, timestamp, telegram_id),
+        )
+        connection.commit()
+    return get_user(telegram_id)
+
+
+def change_plan(telegram_id: int, plan: str) -> dict | None:
+    """Ubah plan saja; expiry dan session tetap dipertahankan."""
+    with _connect() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE users SET plan = ?, updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (plan, _now(), telegram_id),
+        )
+        connection.commit()
+        if cursor.rowcount != 1:
+            return None
+    return get_user(telegram_id)

@@ -40,6 +40,8 @@ def account_text(user_data: dict) -> str:
     status = user_data.get("status") or "Belum Aktif"
     if status == "Active":
         status_line = "🟢 Active"
+    elif status == "Expired":
+        status_line = "🔴 Expired"
     elif status == "Pending":
         status_line = "🟡 Pending"
     else:
@@ -50,12 +52,23 @@ def account_text(user_data: dict) -> str:
         "Starting": "🟡 Starting",
         "Offline": "🔴 Offline",
     }.get(userbot_status, f"🔴 {userbot_status}")
+    plan = user_data.get("plan") or "FREE"
+    remaining = user_data.get("remaining_days")
+    remaining_line = "Lifetime" if remaining == -1 else f"{remaining or 0} hari"
+    expired_at = (
+        "Lifetime"
+        if remaining == -1
+        else display_date(user_data.get("expired_at"))
+    )
     return (
         "👤 Akun Saya\n\n"
         f"Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"Username : {display_username(user_data.get('username'))}\n"
         f"Telegram ID : {user_data.get('telegram_id')}\n"
         f"Status : {status_line}\n"
+        f"Plan : {plan}\n"
+        f"Sisa Hari : {remaining_line}\n"
+        f"Expired : {expired_at}\n"
         f"Userbot : {userbot_status_line}\n"
         f"Mulai Terakhir : {display_date(user_data.get('last_started'))}\n"
         f"Berhenti Terakhir : {display_date(user_data.get('last_stopped'))}\n"
