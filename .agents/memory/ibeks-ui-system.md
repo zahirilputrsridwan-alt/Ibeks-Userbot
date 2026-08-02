@@ -17,8 +17,8 @@ description: Shared Telegram presentation rules for text-only plugins.
 
 **How to apply:** Keep this direct path limited to interactive Help UI; other text-only plugins should continue using the shared sender.
 
-**Help bridge note:** Inline Help is sent and edited by the Manager bot token; the STRING_SESSION Userbot only requests Help through its isolated runtime IPC file. All other Userbot commands remain on STRING_SESSION.
+**Help rollback note:** The Manager BOT_TOKEN bridge was rolled back after it caused a self-send `USER_IS_BOT` loop and stale lock conflicts; Help currently runs directly on the STRING_SESSION Userbot.
 
-**Why:** Telegram inline callback keyboards are bot UI; the target screenshot is a bot message, while a Userbot account cannot provide the same callback experience.
+**Why:** The bridge prevented normal polling/runtime behavior, while the pre-bridge Userbot Help path starts cleanly and preserves the existing command system.
 
-**How to apply:** Keep the catalog source in `userbot/plugins`, keep callback prefixes under `help_*`, and never route unrelated commands through the bot-token bridge.
+**How to apply:** Do not reintroduce the bridge during emergency stability work; any future cross-account Help design needs separate validation and explicit approval.

@@ -9,11 +9,20 @@ from __future__ import annotations
 import asyncio
 
 from pyrogram import filters
+from pyrogram.types import InlineKeyboardMarkup
 
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
-from utils.help_request import request_help
+from utils.help_builder import (
+    build_home_text,
+    get_plan,
+    home_keyboard,
+    page_count,
+    scan_plugins,
+    total_plugins,
+)
+from utils.help_callbacks import register_help_callbacks
 from utils.prefix_manager import get_prefix
 
 
@@ -28,10 +37,23 @@ def setup(client):
     @client.on_message(dynamic_command("help") & filters.me)
     async def cmd_help(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        catalog = scan_plugins()
         owner_user = await client.get_me()
-        request_help(
-            chat_id=message.chat.id,
-            user_id=owner_user.id,
-            owner=await _owner_name(client),
+        text = build_home_text(
+            plan=get_plan(owner_user.id),
             prefix=get_prefix(),
+            plugins=total_plugins(catalog),
+            owner=await _owner_name(client),
+            page=0,
+            pages=page_count(catalog),
         )
+        keyboard = home_keyboard(catalog, 0)
+        if not isinstance(keyboard, InlineKeyboardMarkup):
+            raise TypeError("Help home keyboard harus berupa InlineKeyboardMarkup")
+        await client.send_message(
+            message.chat.id,
+            text,
+            reply_markup=keyboard,
+        )
+
+    register_help_callbacks(client)

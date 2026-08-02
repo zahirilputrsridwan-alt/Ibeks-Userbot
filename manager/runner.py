@@ -217,9 +217,6 @@ class UserbotRunner:
                 "IBEKS_MANAGER_DATABASE_PATH": str(
                     Path(__file__).resolve().parent / "database.db"
                 ),
-                "IBEKS_HELP_REQUEST_PATH": str(
-                    runtime_dir / ".help_request.json"
-                ),
             }
         )
         environment["PYTHONPATH"] = os.pathsep.join(

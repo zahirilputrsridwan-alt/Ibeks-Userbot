@@ -19,7 +19,6 @@ from config import (
     VERSION,
 )
 from database import init_db
-from help_bridge import start_help_bridge
 from loader import load_plugins
 from logger import install_global_error_handler, log
 from runner import UserbotRunner, set_runner
@@ -92,7 +91,6 @@ def main() -> None:
             log.error("Sebagian plugin gagal dimuat: %s", stats["failed"])
         set_runner(runner)
         runner.start()
-        start_help_bridge(client)
         start_checker(client)
         client.run()
     except KeyboardInterrupt:
