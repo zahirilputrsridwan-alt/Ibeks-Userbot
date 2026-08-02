@@ -26,6 +26,7 @@ Tambahkan Secrets berikut:
 - `BOT_TOKEN`
 - `API_ID`
 - `API_HASH`
+- `OWNER_ID` — Telegram ID Owner yang menerima dan memproses approval
 
 `STRING_SESSION`, OTP, dan Password 2FA tidak pernah dikirim ke chat atau
 ditulis ke log.

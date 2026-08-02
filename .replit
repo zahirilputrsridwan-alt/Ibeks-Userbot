@@ -48,3 +48,4 @@ packages = ["freetype", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp
 
 [userenv.shared]
 STRING_SESSION = "BQJfSLkAwxnD7RLcInJZ6z76-8690hdbU2nzUsjp0EdZLgDh_6daBsXcExeFnd9ZHIa8RJLOeCwnfvwka9ipmdc9wR8oKMNS4ORhj01Pc7g8aEvo9YSg2Os2Gc1oXdB997ZuBi3Fq79hVudaFv08HmkWNIXnK8NupvcrRPrrZ2IB1rJvUK3ChOL69imKhVfrnsLUNGfmU4uDfVl7pOMgmdq_4ORVPqcorPbRbanOzweiFWkmhv-vYBKNsf4skCN9f7XGJm3LOq9Ry2t-f3TUe87zmuxO8mMNoUDA7gey8f1jyji6lJRQT0HW1qO1OVYQBiDivtVCJxXYQlaye6M06W0AfyLVSgAAAAIN5tQMAA"
+OWNER_ID = "8823165964"

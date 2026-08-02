@@ -174,7 +174,7 @@ def approve_user(telegram_id: int, owner_id: int) -> dict | None:
     """Setujui user yang masih menunggu persetujuan."""
     timestamp = _now()
     with _connect() as connection:
-        connection.execute(
+        cursor = connection.execute(
             """
             UPDATE users
             SET approval_status = 'approved',
@@ -186,6 +186,8 @@ def approve_user(telegram_id: int, owner_id: int) -> dict | None:
             (owner_id, timestamp, timestamp, telegram_id),
         )
         connection.commit()
+        if cursor.rowcount != 1:
+            return None
     return get_user(telegram_id)
 
 
@@ -193,15 +195,17 @@ def reject_user(telegram_id: int) -> dict | None:
     """Tolak user dan hapus session Telegram yang tersimpan."""
     timestamp = _now()
     with _connect() as connection:
-        connection.execute(
+        cursor = connection.execute(
             """
             UPDATE users
             SET approval_status = 'rejected',
                 session_string = NULL,
                 updated_at = ?
-            WHERE telegram_id = ?
+            WHERE telegram_id = ? AND approval_status = 'pending'
             """,
             (timestamp, telegram_id),
         )
         connection.commit()
+        if cursor.rowcount != 1:
+            return None
     return get_user(telegram_id)
