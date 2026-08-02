@@ -11,9 +11,19 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import MANAGER_DATABASE_PATH, PLUGINS_DIR
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from utils.prefix_manager import get_prefix
+
+try:
+    from config import PLUGINS_DIR
+except (ImportError, AttributeError):
+    PLUGINS_DIR = str(Path(__file__).resolve().parents[1] / "plugins")
+
+try:
+    from config import MANAGER_DATABASE_PATH
+except (ImportError, AttributeError):
+    MANAGER_DATABASE_PATH = str(
+        Path(__file__).resolve().parents[2] / "manager" / "database.db"
+    )
 
 
 HELP_FOOTER = "⨱ IBEKS USERBOT ⨱"
@@ -70,9 +80,9 @@ def _command_names(source: str) -> tuple[str, ...]:
     return tuple(sorted(commands, key=str.casefold))
 
 
-def scan_plugins() -> dict[str, CategoryInfo]:
+def scan_plugins(root: str | Path | None = None) -> dict[str, CategoryInfo]:
     """Scan file plugin secara rekursif dan kelompokkan berdasarkan folder."""
-    root = Path(PLUGINS_DIR)
+    root = Path(root) if root is not None else Path(PLUGINS_DIR)
     categories: dict[str, list[PluginInfo]] = {}
 
     if not root.exists():
@@ -189,10 +199,18 @@ def category_keyboard(previous_page: int = 0) -> InlineKeyboardMarkup:
     )
 
 
-def get_plan(user_id: int) -> str:
+def get_plan(
+    user_id: int,
+    manager_database_path: str | Path | None = None,
+) -> str:
     """Ambil plan dari database Manager tanpa mengubah database Userbot."""
     try:
-        with sqlite3.connect(MANAGER_DATABASE_PATH) as connection:
+        database_path = (
+            Path(manager_database_path)
+            if manager_database_path is not None
+            else Path(MANAGER_DATABASE_PATH)
+        )
+        with sqlite3.connect(database_path) as connection:
             row = connection.execute(
                 "SELECT plan FROM users WHERE telegram_id = ?",
                 (user_id,),
