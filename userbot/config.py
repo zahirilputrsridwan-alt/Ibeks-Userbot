@@ -43,6 +43,18 @@ HELP_REQUEST_PATH: str = os.environ.get(
     "IBEKS_HELP_REQUEST_PATH",
     os.path.join(BASE_DIR, ".help_request.json"),
 )
+VOICE_REQUEST_PATH: str = os.environ.get(
+    "IBEKS_VOICE_REQUEST_PATH",
+    os.path.join(BASE_DIR, ".voice_request.json"),
+)
+VOICE_ACTION_PATH: str = os.environ.get(
+    "IBEKS_VOICE_ACTION_PATH",
+    os.path.join(BASE_DIR, ".voice_action.json"),
+)
+VOICE_RESPONSE_PATH: str = os.environ.get(
+    "IBEKS_VOICE_RESPONSE_PATH",
+    os.path.join(BASE_DIR, ".voice_response.json"),
+)
 
 # ── Auto-delete delay (detik) ─────────────────────────────────────────────────
 AUTO_DELETE_CMD: int = 5   # Hapus pesan command setelah N detik

@@ -220,6 +220,15 @@ class UserbotRunner:
                 "IBEKS_HELP_REQUEST_PATH": str(
                     runtime_dir / ".help_request.json"
                 ),
+                "IBEKS_VOICE_REQUEST_PATH": str(
+                    runtime_dir / ".voice_request.json"
+                ),
+                "IBEKS_VOICE_ACTION_PATH": str(
+                    runtime_dir / ".voice_action.json"
+                ),
+                "IBEKS_VOICE_RESPONSE_PATH": str(
+                    runtime_dir / ".voice_response.json"
+                ),
             }
         )
         environment["PYTHONPATH"] = os.pathsep.join(

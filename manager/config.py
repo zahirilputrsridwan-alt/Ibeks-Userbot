@@ -14,6 +14,9 @@ INSTANCE_LOCK_PATH = BASE_DIR / "manager.lock"
 USERBOT_SOURCE_DIR = BASE_DIR.parent / "userbot"
 USERBOT_MAIN_FILE = USERBOT_SOURCE_DIR / "main.py"
 USERBOT_RUNTIME_DIR = BASE_DIR / "userbot_runtime"
+VOICE_REQUEST_FILENAME = ".voice_request.json"
+VOICE_RESPONSE_FILENAME = ".voice_response.json"
+VOICE_ACTION_FILENAME = ".voice_action.json"
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 API_ID = int(os.environ.get("API_ID", "0") or 0)

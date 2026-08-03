@@ -151,5 +151,10 @@ class VoiceManager:
             return True, "🔇 Mikrofon berhasil dimatikan."
         return True, "🎙 Mikrofon berhasil diaktifkan."
 
+    def is_connected(self, chat_id: int) -> bool:
+        """Kembalikan status koneção sem alterar o estado da chamada."""
+        group_call = self._calls.get(chat_id)
+        return bool(group_call and getattr(group_call, "is_connected", False))
+
 
 voice_manager = VoiceManager()
