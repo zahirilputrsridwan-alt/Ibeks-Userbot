@@ -35,11 +35,6 @@ UTILITY_DESCRIPTIONS = {
     "ig": "Download Instagram",
     "tgdl": "Download Telegram Private",
 }
-ANONYMOUS_DESCRIPTIONS = {
-    "anon": "Cek fitur Anonymous",
-}
-
-
 @dataclass(frozen=True)
 class PluginInfo:
     """Informasi command dari satu file plugin."""
@@ -69,8 +64,6 @@ def _category_name(folder_name: str) -> str:
     """Buat label dari nama folder, tanpa mapping kategori hardcode."""
     if folder_name.casefold() == "utility":
         return "🔒 Utility"
-    if folder_name.casefold() == "anonymous":
-        return "🔐 Anonymous"
     return folder_name.replace("-", " ").replace("_", " ").title()
 
 
@@ -111,16 +104,9 @@ def scan_plugins(root: str | Path | None = None) -> dict[str, CategoryInfo]:
         if not commands:
             continue
 
-        if len(relative.parts) < 2:
-            # anon_plugin.py adalah plugin khusus yang berada di root.
-            # Tetap tampilkan command-nya di .help tanpa memindahkan file.
-            if path.stem != "anon_plugin":
-                continue
-            category_key = "anonymous"
-        else:
-            if "utils" in relative.parts:
-                continue
-            category_key = relative.parts[0]
+        if len(relative.parts) < 2 or "utils" in relative.parts:
+            continue
+        category_key = relative.parts[0]
         categories.setdefault(category_key, []).append(
             PluginInfo(name=path.stem, commands=commands)
         )
@@ -288,12 +274,7 @@ def build_category_text(
         description = (
             f" — {UTILITY_DESCRIPTIONS[command]}"
             if category.key == "utility" and command in UTILITY_DESCRIPTIONS
-            else (
-                f" — {ANONYMOUS_DESCRIPTIONS[command]}"
-                if category.key == "anonymous"
-                and command in ANONYMOUS_DESCRIPTIONS
-                else ""
-            )
+            else ""
         )
         lines.append(f"• {prefix}{command}{description}")
     lines.extend(["", HELP_FOOTER])

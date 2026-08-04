@@ -13,5 +13,4 @@ dependencies = [
     "qrcode==7.4.2",
     "python-barcode==0.15.1",
     "yt-dlp>=2025.1.0",
-    "aiosqlite",
 ]
