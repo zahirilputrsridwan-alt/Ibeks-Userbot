@@ -25,12 +25,21 @@ CALLBACK_FILTER = filters.regex(
 
 
 @dataclass
+class VoiceSession:
+    """Session Voice Chat aktif yang menjadi sumber semua aksi panel."""
+
+    chat_id: int
+    group_id: int
+    call_id: int | str | None
+    room: str
+
+
+@dataclass
 class VoicePanel:
     user_id: int
-    group_chat_id: int
     message_id: int
-    room: str
     connected: bool
+    session: VoiceSession | None = None
     mic_muted: bool | None = None
     last_action: str = "join"
     reason: str = ""
@@ -38,6 +47,7 @@ class VoicePanel:
 
 _panels: dict[tuple[int, int], VoicePanel] = {}
 _latest_panels: dict[int, tuple[int, int]] = {}
+_active_sessions: dict[int, VoiceSession] = {}
 _watcher_task: asyncio.Task | None = None
 
 
@@ -101,12 +111,7 @@ def _keyboard(panel: VoicePanel) -> InlineKeyboardMarkup | None:
 def _panel_text(panel: VoicePanel) -> str:
     if panel.last_action == "leave":
         if not panel.connected:
-            return (
-                "⚠️ Join Voice Chat Result\n\n"
-                "🚪 Left Voice Chat\n\n"
-                f"Room :\n{panel.room}\n\n"
-                "⨱ IBEKS USERBOT ⨱"
-            )
+            return "❌ Tidak ada Voice Chat yang sedang aktif."
 
     if not panel.connected:
         reason = panel.reason or "Userbot gagal terhubung ke Voice Chat."
@@ -117,6 +122,10 @@ def _panel_text(panel: VoicePanel) -> str:
             "⨱ IBEKS USERBOT ⨱"
         )
 
+    session = panel.session
+    if session is None:
+        return "❌ Tidak ada Voice Chat yang sedang aktif."
+
     mic_status = ""
     if panel.mic_muted is False:
         mic_status = "\n\n🎤 Mic : On"
@@ -126,7 +135,7 @@ def _panel_text(panel: VoicePanel) -> str:
     return (
         "⚠️ Join Voice Chat Result\n\n"
         "✅ Success\n\n"
-        f"Room :\n{panel.room}"
+        f"Room :\n{session.room}"
         f"{mic_status}"
         f"{action_error}\n\n"
         "⨱ IBEKS USERBOT ⨱"
@@ -152,12 +161,27 @@ def _panel_for(user_id: int, message_id: int) -> VoicePanel | None:
 
 async def _send_panel(client, payload: dict) -> None:
     user_id = int(payload["user_id"])
+    group_id = int(payload["group_chat_id"])
+    success = bool(payload.get("success"))
+    session = (
+        VoiceSession(
+            chat_id=int(payload.get("chat_id") or group_id),
+            group_id=group_id,
+            call_id=payload.get("call_id"),
+            room=str(payload.get("room") or "Unknown"),
+        )
+        if success
+        else None
+    )
+    if session is not None:
+        _active_sessions[user_id] = session
+    else:
+        _active_sessions.pop(user_id, None)
     panel = VoicePanel(
         user_id=user_id,
-        group_chat_id=int(payload["group_chat_id"]),
         message_id=0,
-        room=str(payload.get("room") or "Unknown"),
-        connected=bool(payload.get("success")),
+        connected=success,
+        session=session,
         last_action="join",
         reason=str(payload.get("reason") or ""),
     )
@@ -174,7 +198,7 @@ async def _send_panel(client, payload: dict) -> None:
         "[Voice] Panel terkirim ke user_id=%s message_id=%s group_chat_id=%s.",
         user_id,
         message.id,
-        panel.group_chat_id,
+        group_id,
     )
 
 
@@ -189,8 +213,27 @@ async def _apply_response(client, payload: dict) -> None:
     panel.connected = bool(payload.get("connected"))
     panel.last_action = str(payload.get("action") or panel.last_action)
     panel.reason = str(payload.get("reason") or "")
-    if "room" in payload and payload["room"]:
-        panel.room = str(payload["room"])
+    session = _active_sessions.get(user_id)
+    if panel.connected:
+        if session is None:
+            group_id = int(payload.get("group_chat_id") or 0)
+            session = VoiceSession(
+                chat_id=int(payload.get("chat_id") or group_id),
+                group_id=group_id,
+                call_id=payload.get("call_id"),
+                room=str(payload.get("room") or "Unknown"),
+            )
+            _active_sessions[user_id] = session
+        elif payload.get("room"):
+            session.room = str(payload["room"])
+        if payload.get("call_id") is not None:
+            session.call_id = payload["call_id"]
+        panel.session = session
+    elif panel.last_action == "leave":
+        _active_sessions.pop(user_id, None)
+        panel.session = None
+    elif session is None:
+        panel.session = None
     if payload.get("mic_muted") is not None:
         panel.mic_muted = bool(payload["mic_muted"])
     await _edit_panel(client, panel)
@@ -198,8 +241,7 @@ async def _apply_response(client, payload: dict) -> None:
 
 async def _handle_callback(client, query) -> None:
     message = query.message
-    if not message or getattr(message.chat, "type", None) != "private":
-        await query.answer("Panel Voice Chat hanya tersedia di chat pribadi.", show_alert=True)
+    if not message:
         return
 
     data = query.data or ""
@@ -221,13 +263,26 @@ async def _handle_callback(client, query) -> None:
         await query.answer("Panel Voice Chat sudah kedaluwarsa.", show_alert=True)
         return
 
+    session = _active_sessions.get(user_id)
+    if session is None:
+        panel.connected = False
+        panel.session = None
+        panel.last_action = "refresh"
+        panel.reason = ""
+        await _edit_panel(client, panel)
+        await query.answer("❌ Tidak ada Voice Chat yang sedang aktif.", show_alert=True)
+        return
+
     action_path = USERBOT_RUNTIME_DIR / str(user_id) / ".voice_action.json"
     _atomic_write(
         action_path,
         {
             "action": action,
             "user_id": user_id,
-            "group_chat_id": panel.group_chat_id,
+            "chat_id": session.chat_id,
+            "group_id": session.group_id,
+            "group_chat_id": session.group_id,
+            "call_id": session.call_id,
             "message_id": panel.message_id,
         },
     )
