@@ -5,6 +5,10 @@ from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
+from config import AUTO_DELETE_CMD
+from utils.autodelete import auto_delete
+from utils.filters import dynamic_command
+
 DB_NAME = 'anon_bot.db'
 MAX_LENGTH = 300
 BAD_WORDS = [
@@ -85,6 +89,21 @@ async def start_handler(client: Client, message: Message):
     ])
     await message.reply_text(text, reply_markup=keyboard)
 
+
+async def anon_handler(client: Client, message: Message):
+    """Tampilkan status dan panduan singkat fitur Anonymous."""
+    asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+    await message.reply_text(
+        "🔐 Anonymous\n\n"
+        "✅ Plugin aktif\n\n"
+        "📨 Mulai sesi:\n"
+        "Kirim /start <ID_TARGET>\n\n"
+        "📥 Cek pesan masuk:\n"
+        "Kirim /inbox\n\n"
+        "⨱ IBEKS USERBOT ⨱"
+    )
+
+
 async def callback_handler(client: Client, callback_query: CallbackQuery):
     data = callback_query.data
     user = callback_query.from_user
@@ -163,6 +182,7 @@ async def inbox_handler(client: Client, message: Message):
 
 def setup(client: Client):
     """Daftarkan seluruh handler plugin ke instance Userbot."""
+    client.on_message(dynamic_command("anon") & filters.me)(anon_handler)
     client.on_message(filters.command("start"))(start_handler)
     client.on_callback_query(filters.regex("^send_type_"))(callback_handler)
     client.on_message(filters.private & ~filters.command(["start", "inbox"]))(

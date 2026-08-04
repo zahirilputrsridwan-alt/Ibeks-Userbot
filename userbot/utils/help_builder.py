@@ -35,6 +35,9 @@ UTILITY_DESCRIPTIONS = {
     "ig": "Download Instagram",
     "tgdl": "Download Telegram Private",
 }
+ANONYMOUS_DESCRIPTIONS = {
+    "anon": "Cek fitur Anonymous",
+}
 
 
 @dataclass(frozen=True)
@@ -66,6 +69,8 @@ def _category_name(folder_name: str) -> str:
     """Buat label dari nama folder, tanpa mapping kategori hardcode."""
     if folder_name.casefold() == "utility":
         return "🔒 Utility"
+    if folder_name.casefold() == "anonymous":
+        return "🔐 Anonymous"
     return folder_name.replace("-", " ").replace("_", " ").title()
 
 
@@ -99,19 +104,23 @@ def scan_plugins(root: str | Path | None = None) -> dict[str, CategoryInfo]:
 
     for path in sorted(root.rglob("*.py")):
         relative = path.relative_to(root)
-        if (
-            path.name == "__init__.py"
-            or "__pycache__" in relative.parts
-            or "utils" in relative.parts
-            or len(relative.parts) < 2
-        ):
+        if path.name == "__init__.py" or "__pycache__" in relative.parts:
             continue
 
         commands = _command_names(path.read_text(encoding="utf-8"))
         if not commands:
             continue
 
-        category_key = relative.parts[0]
+        if len(relative.parts) < 2:
+            # anon_plugin.py adalah plugin khusus yang berada di root.
+            # Tetap tampilkan command-nya di .help tanpa memindahkan file.
+            if path.stem != "anon_plugin":
+                continue
+            category_key = "anonymous"
+        else:
+            if "utils" in relative.parts:
+                continue
+            category_key = relative.parts[0]
         categories.setdefault(category_key, []).append(
             PluginInfo(name=path.stem, commands=commands)
         )
@@ -279,7 +288,12 @@ def build_category_text(
         description = (
             f" — {UTILITY_DESCRIPTIONS[command]}"
             if category.key == "utility" and command in UTILITY_DESCRIPTIONS
-            else ""
+            else (
+                f" — {ANONYMOUS_DESCRIPTIONS[command]}"
+                if category.key == "anonymous"
+                and command in ANONYMOUS_DESCRIPTIONS
+                else ""
+            )
         )
         lines.append(f"• {prefix}{command}{description}")
     lines.extend(["", HELP_FOOTER])
