@@ -5,6 +5,14 @@ description: Shared Telegram presentation rules for text-only plugins.
 
  All text-only plugin output should pass through the shared UI sender, which preserves the original message body and adds Telegram's collapsed blockquote entity only. Media and animation plugins remain outside that pipeline.
 
+## Per-plugin field ownership
+
+Text UI must not generate generic labels, fallback fields, or inferred headings. Each plugin owns its own visible field names and may build its card directly; the shared sender only transports the resulting text.
+
+**Why:** Generic `Label`/`Info` rows made reports longer and hid the actual meaning of fields such as Target, ID, Aura, Outfit, and Tier.
+
+**How to apply:** When editing a plugin, write the real field name at the output boundary. Never add a label-parsing or template-generator layer to `send_ui`/`edit_ui`.
+
 **Why:** The old UI must remain byte-for-byte equivalent visually; HTML wrappers add headers, footers, and formatting changes. The current Pyrogram version exposes only the older blockquote type, so expandable behavior requires the newer raw entity with the `collapsed` flag and a safe fallback.
 
 **How to apply:** Keep original Markdown/emoji/report bodies at plugin boundaries. With the current Pyrogram runtime, send/edit through the standard text path rather than manually supplying high-level entities; never migrate media/document/animation handlers to expandable text UI.

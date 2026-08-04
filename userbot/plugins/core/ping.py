@@ -19,7 +19,7 @@ from utils.autodelete import auto_delete
 from utils.helper import get_ram_usage, get_cpu_usage
 from utils.uptime import format_uptime
 from utils.filters import dynamic_command
-from plugins.utils.ui import box_text, edit_ui, send_ui
+from plugins.utils.ui import edit_ui, send_ui
 
 
 def setup(client):
@@ -51,21 +51,19 @@ def setup(client):
         cpu = get_cpu_usage()
         uptime = format_uptime()
 
-        text = box_text(
-            "\n".join(
-                (
-                    f"Ping: `{ping_ms} ms`",
-                    f"API Ping: `{api_ping_ms} ms`",
-                    f"Uptime: `{uptime}`",
-                    f"RAM: `{ram}%`",
-                    f"CPU: `{cpu}%`",
-                    f"Owner: `{owner}`",
-                    f"Bot: `{BOT_NAME}`",
-                    f"Version: `{VERSION}`",
-                )
-            ),
-            title="STATUS",
-            emoji="🏓",
+        text = (
+            "╭─「 🏓 𝗦𝗧𝗔𝗧𝗨𝗦 」\n"
+            "│\n"
+            f"├ 🏓 𝗣𝗶𝗻𝗴\n│  ╰➤ `{ping_ms} ms`\n"
+            f"├ ⚡ 𝗔𝗣𝗜 𝗣𝗶𝗻𝗴\n│  ╰➤ `{api_ping_ms} ms`\n"
+            f"├ ⏰ 𝗨𝗽𝘁𝗶𝗺𝗲\n│  ╰➤ `{uptime}`\n"
+            f"├ 💾 𝗥𝗔𝗠\n│  ╰➤ `{ram}%`\n"
+            f"├ 🖥 𝗖𝗣𝗨\n│  ╰➤ `{cpu}%`\n"
+            f"├ 👤 𝗢𝘄𝗻𝗲𝗿\n│  ╰➤ `{owner}`\n"
+            f"├ 🤖 𝗕𝗼𝘁\n│  ╰➤ `{BOT_NAME}`\n"
+            f"├ 📦 𝗩𝗲𝗿𝘀𝗶𝗼𝗻\n│  ╰➤ `{VERSION}`\n"
+            "│\n"
+            "╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
         )
         try:
             await edit_ui(client, sent, text)

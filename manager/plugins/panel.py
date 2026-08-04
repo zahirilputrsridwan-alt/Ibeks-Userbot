@@ -18,7 +18,7 @@ from database import (
     renew_subscription,
     set_user_status,
 )
-from formatter import box_text, display_date, display_username
+from formatter import display_date, display_username
 from logger import log, safe_handler
 from runner import OFFLINE, ONLINE, STARTING, get_runner, running_clients
 from subscription import PLANS, expiry_label, remaining_days
@@ -75,18 +75,17 @@ def _panel_text() -> str:
     stats = _stats(_users())
     runner = get_runner()
     runtime = "Running" if runner else "Offline"
-    return box_text((
-        "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "📊 IBEKS MANAGER PANEL\n\n"
-        f"👥 Total User: {stats['total']}\n"
-        f"🟢 Userbot Online: {stats['online']}\n"
-        f"🔴 Userbot Offline: {stats['offline']}\n"
-        f"⏳ Pending Approval: {stats['pending']}\n"
-        f"❌ Rejected: {stats['rejected']}\n"
-        "💾 Database: SQLite\n"
-        f"⚙ Runtime Status: {runtime} ({stats['active_runtime']} aktif)\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━━"
-    ), "MANAGER PANEL", "📊")
+    return (
+        "╭─「 📊 𝗠𝗔𝗡𝗔𝗚𝗘𝗥 𝗣𝗔𝗡𝗘𝗟 」\n│\n"
+        f"├ 👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿\n│  ╰➤ {stats['total']}\n"
+        f"├ 🟢 𝗨𝘀𝗲𝗿𝗯𝗼𝘁 𝗢𝗻𝗹𝗶𝗻𝗲\n│  ╰➤ {stats['online']}\n"
+        f"├ 🔴 𝗨𝘀𝗲𝗿𝗯𝗼𝘁 𝗢𝗳𝗳𝗹𝗶𝗻𝗲\n│  ╰➤ {stats['offline']}\n"
+        f"├ ⏳ 𝗣𝗲𝗻𝗱𝗶𝗻𝗴 𝗔𝗽𝗽𝗿𝗼𝘃𝗮𝗹\n│  ╰➤ {stats['pending']}\n"
+        f"├ ❌ 𝗥𝗲𝗷𝗲𝗰𝘁𝗲𝗱\n│  ╰➤ {stats['rejected']}\n"
+        "├ 💾 𝗗𝗮𝘁𝗮𝗯𝗮𝘀𝗲\n│  ╰➤ SQLite\n"
+        f"├ ⚙️ 𝗥𝘂𝗻𝘁𝗶𝗺𝗲 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {runtime} ({stats['active_runtime']} aktif)\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+    )
 
 
 def _panel_keyboard() -> InlineKeyboardMarkup:
@@ -117,47 +116,47 @@ def _back_panel_keyboard() -> InlineKeyboardMarkup:
 
 def _user_list_text(users: list[dict], title: str, page: int = 0) -> str:
     if not users:
-        return box_text("Tidak ada user.", title, "👥")
+        return f"╭─「 👥 𝗗𝗔𝗙𝗧𝗔𝗥 」\n│\n├ 👤 𝗨𝘀𝗲𝗿\n│  ╰➤ Tidak ada user.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     start = page * PAGE_SIZE
     selected = users[start : start + PAGE_SIZE]
-    lines = [f"👥 {title}", ""]
+    lines = [f"╭─「 👥 𝗗𝗔𝗙𝗧𝗔𝗥 {title.upper()} 」", "│"]
     for index, user in enumerate(selected, start=start + 1):
         lines.extend(
             [
-                f"{index}. {user.get('full_name') or 'Tidak diketahui'}",
-                f"   {display_username(user.get('username'))} · `{user['telegram_id']}`",
-                f"   {_status_label(user.get('userbot_status'))} · "
-                f"{user.get('status') or 'Belum Aktif'}",
-                f"   Login: {display_date(user.get('login_at'))}",
+                f"├ {index}. 𝗡𝗮𝗺𝗮\n│  ╰➤ {user.get('full_name') or 'Tidak diketahui'}",
+                f"├ 🔗 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲\n│  ╰➤ {display_username(user.get('username'))}",
+                f"├ 🆔 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺 𝗜𝗗\n│  ╰➤ `{user['telegram_id']}`",
+                f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {_status_label(user.get('userbot_status'))} · {user.get('status') or 'Belum Aktif'}",
+                f"├ 🕒 𝗟𝗼𝗴𝗶𝗻\n│  ╰➤ {display_date(user.get('login_at'))}",
                 "",
             ]
         )
     total_pages = (len(users) + PAGE_SIZE - 1) // PAGE_SIZE
-    lines.append(f"Halaman {page + 1}/{total_pages}")
-    return box_text("\n".join(lines), title, "👥")
+    lines.extend((f"├ 📄 𝗛𝗮𝗹𝗮𝗺𝗮𝗻\n│  ╰➤ {page + 1}/{total_pages}", "│", "╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"))
+    return "\n".join(lines)
 
 
 def _subscription_list_text(users: list[dict], page: int = 0) -> str:
     if not users:
-        return box_text("Tidak ada user.", "SUBSCRIPTION", "📅")
+        return "╭─「 📅 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡 」\n│\n├ 👤 𝗨𝘀𝗲𝗿\n│  ╰➤ Tidak ada user.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     start = page * PAGE_SIZE
     selected = users[start : start + PAGE_SIZE]
-    lines = ["📅 Subscription", ""]
+    lines = ["╭─「 📅 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡 」", "│"]
     for user in selected:
         remaining = remaining_days(user)
         lines.extend(
             [
-                f"👤 {user.get('full_name') or 'Tidak diketahui'}",
-                f"   Plan: {user.get('plan') or 'FREE'}",
-                f"   Expired: {expiry_label(user)}",
-                f"   Sisa Hari: {'Lifetime' if remaining == -1 else remaining}",
-                f"   Status: {user.get('status') or 'Belum Aktif'}",
+                f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user.get('full_name') or 'Tidak diketahui'}",
+                f"├ 📦 𝗣𝗹𝗮𝗻\n│  ╰➤ {user.get('plan') or 'FREE'}",
+                f"├ 📅 𝗘𝘅𝗽𝗶𝗿𝗲𝗱\n│  ╰➤ {expiry_label(user)}",
+                f"├ ⏳ 𝗦𝗶𝘀𝗮 𝗛𝗮𝗿𝗶\n│  ╰➤ {'Lifetime' if remaining == -1 else remaining}",
+                f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {user.get('status') or 'Belum Aktif'}",
                 "",
             ]
         )
     total_pages = (len(users) + PAGE_SIZE - 1) // PAGE_SIZE
-    lines.append(f"Halaman {page + 1}/{total_pages}")
-    return box_text("\n".join(lines), "SUBSCRIPTION", "📅")
+    lines.extend((f"├ 📄 𝗛𝗮𝗹𝗮𝗺𝗮𝗻\n│  ╰➤ {page + 1}/{total_pages}", "│", "╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"))
+    return "\n".join(lines)
 
 
 def _user_list_keyboard(
@@ -194,22 +193,23 @@ def _user_list_keyboard(
 
 def _detail_text(user: dict) -> str:
     runtime = "Online" if int(user["telegram_id"]) in _runtime_ids() else "Offline"
-    return box_text((
-        "👤 Detail User\n\n"
-        f"Nama: {user.get('full_name') or 'Tidak diketahui'}\n"
-        f"Username: {display_username(user.get('username'))}\n"
-        f"Telegram ID: {user['telegram_id']}\n"
-        f"Nomor: {user.get('phone_number') or 'Tidak tersedia'}\n"
-        f"Status Approval: {user.get('approval_status') or 'pending'}\n"
-        f"Plan: {user.get('plan') or 'FREE'}\n"
-        f"Expired: {expiry_label(user)}\n"
-        f"Sisa Hari: {'Lifetime' if remaining_days(user) == -1 else remaining_days(user)}\n"
-        f"Subscription Status: {user.get('status') or 'Belum Aktif'}\n"
-        f"Status Userbot: {_status_label(user.get('userbot_status'))}\n"
-        f"Login Terakhir: {display_date(user.get('login_at'))}\n"
-        f"Runtime: {runtime}\n"
-        "Version: IBEKS USERBOT v1.0.0"
-    ), "DETAIL USER", "👤")
+    return (
+        "╭─「 👤 𝗗𝗘𝗧𝗔𝗜𝗟 𝗨𝗦𝗘𝗥 」\n│\n"
+        f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user.get('full_name') or 'Tidak diketahui'}\n"
+        f"├ 🔗 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲\n│  ╰➤ {display_username(user.get('username'))}\n"
+        f"├ 🆔 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺 𝗜𝗗\n│  ╰➤ {user['telegram_id']}\n"
+        f"├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ {user.get('phone_number') or 'Tidak tersedia'}\n"
+        f"├ ✅ 𝗦𝘁𝗮𝘁𝘂𝘀 𝗔𝗽𝗽𝗿𝗼𝘃𝗮𝗹\n│  ╰➤ {user.get('approval_status') or 'pending'}\n"
+        f"├ 📦 𝗣𝗹𝗮𝗻\n│  ╰➤ {user.get('plan') or 'FREE'}\n"
+        f"├ 📅 𝗘𝘅𝗽𝗶𝗿𝗲𝗱\n│  ╰➤ {expiry_label(user)}\n"
+        f"├ ⏳ 𝗦𝗶𝘀𝗮 𝗛𝗮𝗿𝗶\n│  ╰➤ {'Lifetime' if remaining_days(user) == -1 else remaining_days(user)}\n"
+        f"├ 📌 𝗦𝘂𝗯𝘀𝗰𝗿𝗶𝗽𝘁𝗶𝗼𝗻\n│  ╰➤ {user.get('status') or 'Belum Aktif'}\n"
+        f"├ 🤖 𝗦𝘁𝗮𝘁𝘂𝘀 𝗨𝘀𝗲𝗿𝗯𝗼𝘁\n│  ╰➤ {_status_label(user.get('userbot_status'))}\n"
+        f"├ 🕒 𝗟𝗼𝗴𝗶𝗻 𝗧𝗲𝗿𝗮𝗸𝗵𝗶𝗿\n│  ╰➤ {display_date(user.get('login_at'))}\n"
+        f"├ ⚙️ 𝗥𝘂𝗻𝘁𝗶𝗺𝗲\n│  ╰➤ {runtime}\n"
+        "├ 📦 𝗩𝗲𝗿𝘀𝗶\n│  ╰➤ IBEKS USERBOT v1.0.0\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+    )
 
 
 def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
@@ -260,29 +260,25 @@ def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
 
 def _subscription_text(user: dict) -> str:
     remaining = remaining_days(user)
-    return box_text(
-        (
-        f"Nama: {user.get('full_name') or 'Tidak diketahui'}\n"
-        f"Plan: {user.get('plan') or 'FREE'}\n"
-        f"Expired: {expiry_label(user)}\n"
-        f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}\n"
-        f"Status: {user.get('status') or 'Belum Aktif'}"
-        ),
-        "SUBSCRIPTION",
-        "📅",
+    return (
+        "╭─「 📅 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡 」\n│\n"
+        f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user.get('full_name') or 'Tidak diketahui'}\n"
+        f"├ 📦 𝗣𝗹𝗮𝗻\n│  ╰➤ {user.get('plan') or 'FREE'}\n"
+        f"├ 📅 𝗘𝘅𝗽𝗶𝗿𝗲𝗱\n│  ╰➤ {expiry_label(user)}\n"
+        f"├ ⏳ 𝗦𝗶𝘀𝗮 𝗛𝗮𝗿𝗶\n│  ╰➤ {'Lifetime' if remaining == -1 else remaining}\n"
+        f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {user.get('status') or 'Belum Aktif'}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
 def _subscription_success_text(user: dict) -> str:
     remaining = remaining_days(user)
-    return box_text(
-        (
-        f"Plan: {user.get('plan') or 'FREE'}\n"
-        f"Expired: {expiry_label(user)}\n"
-        f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}"
-        ),
-        "SUBSCRIPTION DIPERBARUI",
-        "✅",
+    return (
+        "╭─「 ✅ 𝗦𝗨𝗕𝗦𝗖𝗥𝗜𝗣𝗧𝗜𝗢𝗡 𝗗𝗜𝗣𝗘𝗥𝗕𝗔𝗥𝗨𝗜 」\n│\n"
+        f"├ 📦 𝗣𝗹𝗮𝗻\n│  ╰➤ {user.get('plan') or 'FREE'}\n"
+        f"├ 📅 𝗘𝘅𝗽𝗶𝗿𝗲𝗱\n│  ╰➤ {expiry_label(user)}\n"
+        f"├ ⏳ 𝗦𝗶𝘀𝗮 𝗛𝗮𝗿𝗶\n│  ╰➤ {'Lifetime' if remaining == -1 else remaining}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -318,18 +314,16 @@ def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
 
 def _stats_text() -> str:
     stats = _stats(_users())
-    return box_text(
-        (
-        f"Total User: {stats['total']}\n"
-        f"User Aktif: {sum(user.get('status') == 'Active' for user in _users())}\n"
-        f"User Online: {stats['online']}\n"
-        f"User Offline: {stats['offline']}\n"
-        f"Pending: {stats['pending']}\n"
-        f"Rejected: {stats['rejected']}\n"
-        f"Runtime Aktif: {stats['active_runtime']}\n"
-        ),
-        "STATISTIK MANAGER",
-        "📊",
+    return (
+        "╭─「 📊 𝗦𝗧𝗔𝗧𝗜𝗦𝗧𝗜𝗞 𝗠𝗔𝗡𝗔𝗚𝗘𝗥 」\n│\n"
+        f"├ 👥 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿\n│  ╰➤ {stats['total']}\n"
+        f"├ ✅ 𝗨𝘀𝗲𝗿 𝗔𝗸𝘁𝗶𝗳\n│  ╰➤ {sum(user.get('status') == 'Active' for user in _users())}\n"
+        f"├ 🟢 𝗨𝘀𝗲𝗿 𝗢𝗻𝗹𝗶𝗻𝗲\n│  ╰➤ {stats['online']}\n"
+        f"├ 🔴 𝗨𝘀𝗲𝗿 𝗢𝗳𝗳𝗹𝗶𝗻𝗲\n│  ╰➤ {stats['offline']}\n"
+        f"├ ⏳ 𝗣𝗲𝗻𝗱𝗶𝗻𝗴\n│  ╰➤ {stats['pending']}\n"
+        f"├ ❌ 𝗥𝗲𝗷𝗲𝗰𝘁𝗲𝗱\n│  ╰➤ {stats['rejected']}\n"
+        f"├ ⚙️ 𝗥𝘂𝗻𝘁𝗶𝗺𝗲 𝗔𝗸𝘁𝗶𝗳\n│  ╰➤ {stats['active_runtime']}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -428,7 +422,9 @@ def setup(client):
     @safe_handler
     async def panel_command(_client, message):
         if not _is_owner(message):
-            await message.reply(box_text("Akses ditolak.", "AKSES", "⛔"))
+            await message.reply(
+                "╭─「 ⛔ 𝗔𝗞𝗦𝗘𝗦 」\n│\n├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Akses ditolak.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+            )
             return
         await message.reply(_panel_text(), reply_markup=_panel_keyboard())
 
@@ -494,11 +490,9 @@ def setup(client):
             await query.answer()
             _searching.add(query.from_user.id)
             await query.message.edit(
-                box_text(
-                    "Kirim nama, username, atau Telegram ID.",
-                    "CARI USER",
-                    "🔍",
-                ),
+                "╭─「 🔍 𝗖𝗔𝗥𝗜 𝗨𝗦𝗘𝗥 」\n│\n"
+                "├ 🔎 𝗣𝗲𝗻𝗰𝗮𝗿𝗶𝗮𝗻\n│  ╰➤ Kirim nama, username, atau Telegram ID.\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
                 reply_markup=_back_panel_keyboard(),
             )
         elif action == "user":
@@ -616,12 +610,10 @@ def setup(client):
                 return
             await query.answer()
             await query.message.edit(
-                box_text(
-                    f"Hapus user {telegram_id}?\n"
-                    "Database, STRING_SESSION, approval, dan runtime akan dihapus.",
-                    "KONFIRMASI HAPUS",
-                    "⚠️",
-                ),
+                "╭─「 ⚠️ 𝗞𝗢𝗡𝗙𝗜𝗥𝗠𝗔𝗦𝗜 𝗛𝗔𝗣𝗨𝗦 」\n│\n"
+                f"├ 🗑 𝗨𝘀𝗲𝗿\n│  ╰➤ {telegram_id}\n"
+                "├ 📦 𝗗𝗮𝘁𝗮\n│  ╰➤ Database, STRING_SESSION, approval, runtime\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
