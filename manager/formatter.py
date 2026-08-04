@@ -5,6 +5,25 @@ from __future__ import annotations
 from datetime import datetime
 
 
+def box_text(body: str, title: str, emoji: str = "📦") -> str:
+    """Format seluruh output teks Manager dengan UI kartu IBEKS."""
+    body = str(body or "").strip()
+    if body.startswith("╭─「 ") and body.endswith("⨱"):
+        return body
+    rows = [f"╭─「 {emoji} 𝗝𝗨𝗗𝗨𝗟 {title} 」", "│"]
+    lines = [line.strip() for line in body.splitlines() if line.strip()]
+    if not lines:
+        lines = ["Tidak ada informasi."]
+    for line in lines:
+        if ":" in line:
+            label, value = (part.strip() for part in line.split(":", 1))
+        else:
+            label, value = "Info", line
+        rows.extend((f"├ 🔹 𝗟𝗮𝗯𝗲𝗹 {label}", f"│  ╰➤ {value}", "│"))
+    rows.append("╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
+    return "\n".join(rows)
+
+
 def full_name(user) -> str:
     return " ".join(
         part
@@ -30,9 +49,11 @@ def display_date(value: str | None) -> str:
 
 
 def welcome_text() -> str:
-    return (
-        "👋 Selamat Datang di IBEKS USERBOT\n\n"
-        "Silakan pilih menu di bawah untuk mulai menggunakan layanan."
+    return box_text(
+        "Selamat datang di IBEKS USERBOT.\n"
+        "Silakan pilih menu di bawah untuk mulai menggunakan layanan.",
+        "MENU UTAMA",
+        "👋",
     )
 
 
@@ -60,8 +81,8 @@ def account_text(user_data: dict) -> str:
         if remaining == -1
         else display_date(user_data.get("expired_at"))
     )
-    return (
-        "👤 Akun Saya\n\n"
+    return box_text(
+        (
         f"Nama : {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"Username : {display_username(user_data.get('username'))}\n"
         f"Telegram ID : {user_data.get('telegram_id')}\n"
@@ -73,16 +94,22 @@ def account_text(user_data: dict) -> str:
         f"Mulai Terakhir : {display_date(user_data.get('last_started'))}\n"
         f"Berhenti Terakhir : {display_date(user_data.get('last_stopped'))}\n"
         f"Tanggal Bergabung : {display_date(user_data.get('created_at'))}"
+        ),
+        "AKUN SAYA",
+        "👤",
     )
 
 
 def guide_text() -> str:
-    return (
-        "📖 Panduan\n\n"
+    return box_text(
+        (
         "1. Tekan Minta Akses.\n"
         "2. Masukkan nomor Telegram.\n"
         "3. Verifikasi OTP.\n"
         "4. Userbot aktif."
+        ),
+        "PANDUAN",
+        "📖",
     )
 
 
@@ -93,12 +120,15 @@ def about_text(
     python_version: str,
     pyrogram_version: str,
 ) -> str:
-    return (
-        "ℹ️ Tentang\n\n"
+    return box_text(
+        (
         f"Nama Bot : {name}\n"
         f"Versi : {version}\n"
         f"Developer : {developer}\n"
         "Library : Pyrogram\n"
         f"Python : {python_version}\n"
         f"Pyrogram : {pyrogram_version}"
+        ),
+        "TENTANG",
+        "ℹ️",
     )

@@ -15,6 +15,7 @@ from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.id_card_generator import generate_id_card
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -40,7 +41,10 @@ def setup(client):
         except Exception as exc:
             import logging
             logging.exception("[ID] Gagal generate ID card: %s", exc)
-            await client.send_message(
+            await send_ui(
+                client,
                 chat_id,
-                f"❌ Gagal generate ID card: {exc}",
+                f"Gagal generate ID card: {exc}",
+                title="ID CARD",
+                emoji="❌",
             )

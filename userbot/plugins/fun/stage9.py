@@ -17,6 +17,7 @@ from pyrogram import filters
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
+from plugins.utils.ui import edit_ui, send_ui
 
 
 _ANIMATION_FRAMES = (
@@ -48,13 +49,13 @@ def _result_for_user(user_id: int) -> str:
     return _RESULTS[index]
 
 
-async def _animate(message) -> None:
+async def _animate(client, message) -> None:
     """Tampilkan animasi secara berurutan pada pesan hasil yang sama."""
     # Frame pertama sudah dikirim oleh caller. Mengedit ke teks identik akan
     # memicu MessageNotModified dari Telegram dan menghentikan animasi.
     for frame in _ANIMATION_FRAMES[1:]:
         await asyncio.sleep(1.0)
-        await message.edit_text(frame)
+        await edit_ui(client, message, frame, title="KOCOK", emoji="🎲")
 
 
 def setup(client):
@@ -64,17 +65,23 @@ def setup(client):
     async def cmd_ckocok(client, message):
         asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
 
-        result_message = await client.send_message(message.chat.id, _ANIMATION_FRAMES[0])
+        result_message = await send_ui(
+            client,
+            message.chat.id,
+            _ANIMATION_FRAMES[0],
+            title="KOCOK",
+            emoji="🎲",
+        )
         try:
-            await _animate(result_message)
+            await _animate(client, result_message)
             result = _result_for_user(message.from_user.id)
-            await result_message.edit_text(result)
+            await edit_ui(client, result_message, result, title="HASIL", emoji="💦")
         except Exception as exc:
             # Animasi tidak boleh membuat hasil akhir hilang jika Telegram
             # menolak salah satu edit (misalnya pesan dihapus lebih dulu).
             logging.exception("[Stage9] Animasi .ckocok gagal: %s", exc)
             try:
                 result = _result_for_user(message.from_user.id)
-                await result_message.edit_text(result)
+                await edit_ui(client, result_message, result, title="HASIL", emoji="💦")
             except Exception as result_exc:
                 logging.exception("[Stage9] Gagal mengirim hasil .ckocok: %s", result_exc)

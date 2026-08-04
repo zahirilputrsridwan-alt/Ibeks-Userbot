@@ -7,7 +7,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import OWNER_ID
 from database import approve_user, get_user, reject_user
-from formatter import display_date, display_username
+from formatter import box_text, display_date, display_username
 from logger import log, safe_handler
 from runner import get_runner
 
@@ -49,25 +49,46 @@ def _detail_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
 
 
 def _approval_request_text(user_data: dict) -> str:
-    return (
-        "📥 Permintaan Baru\n\n"
+    return box_text(
+        (
         f"Nama: {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"Username: {display_username(user_data.get('username'))}\n"
         f"Telegram ID: {user_data.get('telegram_id')}\n"
         f"Nomor: {user_data.get('phone_number') or 'Tidak tersedia'}\n"
         f"Waktu Login: {display_date(user_data.get('login_at'))}"
+        ),
+        "PERMINTAAN BARU",
+        "📥",
     )
 
 
 def _detail_text(user_data: dict) -> str:
-    return (
-        "👤 Detail Pengguna\n\n"
+    return box_text(
+        (
         f"Nama: {user_data.get('full_name') or 'Tidak diketahui'}\n"
         f"Username: {display_username(user_data.get('username'))}\n"
         f"Telegram ID: {user_data.get('telegram_id')}\n"
         f"Nomor: {user_data.get('phone_number') or 'Tidak tersedia'}\n"
         f"Tanggal Login: {display_date(user_data.get('login_at'))}\n"
         f"Status Approval: {user_data.get('approval_status') or 'pending'}"
+        ),
+        "DETAIL PENGGUNA",
+        "👤",
+    )
+
+
+def _with_status(user_data: dict, status: str, emoji: str) -> str:
+    return box_text(
+        (
+            f"Nama: {user_data.get('full_name') or 'Tidak diketahui'}\n"
+            f"Username: {display_username(user_data.get('username'))}\n"
+            f"Telegram ID: {user_data.get('telegram_id')}\n"
+            f"Nomor: {user_data.get('phone_number') or 'Tidak tersedia'}\n"
+            f"Waktu Login: {display_date(user_data.get('login_at'))}\n"
+            f"Status: {status}"
+        ),
+        "PERMINTAAN BARU",
+        emoji,
     )
 
 
@@ -92,7 +113,7 @@ async def notify_owner(client, telegram_id: int) -> None:
 
 async def _notify_user(client, telegram_id: int, text: str) -> None:
     try:
-        await client.send_message(telegram_id, text)
+        await client.send_message(telegram_id, box_text(text, "STATUS AKSES", "🔐"))
     except Exception:
         log.exception("Gagal mengirim hasil approval ke user %s.", telegram_id)
 
@@ -143,13 +164,12 @@ def setup(client):
             updated = approve_user(telegram_id, OWNER_ID)
             if not updated:
                 await query.message.edit(
-                    _approval_request_text(user_data)
-                    + "\n\nStatus: sudah diproses.",
+                    _with_status(user_data, "sudah diproses.", "ℹ️"),
                     reply_markup=None,
                 )
                 return
             await query.message.edit(
-                _approval_request_text(updated) + "\n\n✅ Status: approved.",
+                _with_status(updated, "approved.", "✅"),
                 reply_markup=None,
             )
             await _notify_user(
@@ -171,12 +191,12 @@ def setup(client):
         updated = reject_user(telegram_id)
         if not updated:
             await query.message.edit(
-                _approval_request_text(user_data) + "\n\nStatus: user tidak ditemukan.",
+                _with_status(user_data, "user tidak ditemukan.", "ℹ️"),
                 reply_markup=None,
             )
             return
         await query.message.edit(
-            _approval_request_text(updated) + "\n\n❌ Status: rejected.",
+            _with_status(updated, "rejected.", "❌"),
             reply_markup=None,
         )
         await _notify_user(

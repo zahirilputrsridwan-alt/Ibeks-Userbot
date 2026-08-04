@@ -7,7 +7,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import OWNER_ID
 from database import list_users
-from formatter import display_date, display_username
+from formatter import box_text, display_date, display_username
 from logger import log, safe_handler
 from runner import get_runner
 
@@ -19,7 +19,7 @@ def _owner(query_or_message) -> bool:
 
 def _userbots_text(users: list[dict]) -> str:
     if not users:
-        return "🤖 Userbot Manager\n\nBelum ada akun terdaftar."
+        return box_text("Belum ada akun terdaftar.", "USERBOT MANAGER", "🤖")
     lines = ["🤖 Userbot Manager", ""]
     for user in users:
         lines.extend(
@@ -34,7 +34,7 @@ def _userbots_text(users: list[dict]) -> str:
                 "",
             ]
         )
-    return "\n".join(lines).strip()
+    return box_text("\n".join(lines).strip(), "USERBOT MANAGER", "🤖")
 
 
 def _userbots_keyboard(users: list[dict]) -> InlineKeyboardMarkup | None:
@@ -70,7 +70,7 @@ async def _render(message, *, answer: str | None = None) -> None:
         reply_markup=_userbots_keyboard(users),
     )
     if answer:
-        await message.reply(answer)
+        await message.reply(box_text(answer, "HASIL AKSI", "ℹ️"))
 
 
 def setup(client):
@@ -78,7 +78,7 @@ def setup(client):
     @safe_handler
     async def userbots_command(_client, message):
         if not _owner(message):
-            await message.reply("⛔ Akses ditolak.")
+            await message.reply(box_text("Akses ditolak.", "AKSES", "⛔"))
             return
         users = list_users()
         await message.reply(

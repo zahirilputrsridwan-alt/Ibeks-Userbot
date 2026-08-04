@@ -1,50 +1,35 @@
-"""Transport helper untuk menambahkan expandable blockquote tanpa mengubah UI."""
+"""Format dan transport UI teks IBEKS USERBOT."""
 
 from __future__ import annotations
 
-from io import BytesIO
 from typing import Optional
-
-from pyrogram.parser import Parser
-from pyrogram.parser import utils as parser_utils
-from pyrogram.raw.core import TLObject
-from pyrogram.raw.core.primitives import Int
-
-from utils.logger import log
-
-
-class _ExpandableBlockquote(TLObject):
-    """Telegram layer 227 blockquote entity with collapsed flag."""
-
-    __slots__ = ["collapsed", "offset", "length"]
-    ID = 0xF1CCAAAC
-    QUALNAME = "types.MessageEntityBlockquote"
-
-    def __init__(self, *, collapsed: bool, offset: int, length: int) -> None:
-        self.collapsed = collapsed
-        self.offset = offset
-        self.length = length
-
-    @staticmethod
-    def read(b: BytesIO, *args):
-        flags = Int.read(b)
-        return _ExpandableBlockquote(
-            collapsed=bool(flags & 1),
-            offset=Int.read(b),
-            length=Int.read(b),
-        )
-
-    def write(self, *args) -> bytes:
-        b = BytesIO()
-        b.write(Int(self.ID, False))
-        b.write(Int(1 if self.collapsed else 0))
-        b.write(Int(self.offset))
-        b.write(Int(self.length))
-        return b.getvalue()
 
 
 def safe_text(text: Optional[str]) -> str:
-    return "" if text is None else str(text)
+    return "" if text is None else str(text).strip()
+
+
+def box_text(body: str, title: str = "", emoji: str = "📦") -> str:
+    """Ubah isi teks menjadi satu-satunya format kartu teks Userbot."""
+    text = safe_text(body)
+    if text.startswith("╭─「 ") and text.endswith("⨱"):
+        return text
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    inferred_title = title.strip() or (lines[0] if lines else "Informasi")
+    if not title and lines:
+        lines = lines[1:]
+    rows = [f"╭─「 {emoji} 𝗝𝗨𝗗𝗨𝗟 {inferred_title} 」", "│"]
+    if not lines:
+        lines = ["Tidak ada informasi."]
+    for line in lines:
+        if ":" in line:
+            label, value = line.split(":", 1)
+            label, value = label.strip(), value.strip()
+        else:
+            label, value = "Info", line
+        rows.extend((f"├ 🔹 𝗟𝗮𝗯𝗲𝗹 {label}", f"│  ╰➤ {value}", "│"))
+    rows.append("╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
+    return "\n".join(rows)
 
 
 async def send_ui(
@@ -57,25 +42,23 @@ async def send_ui(
     expandable: bool = True,
     **kwargs,
 ):
-    """Kirim teks lama dengan blockquote sebagai satu-satunya tambahan UI.
-
-    Argumen title/category/status dipertahankan agar pemanggil lama tetap
-    kompatibel, tetapi sengaja tidak dipakai untuk menyusun ulang teks.
-    """
-    text = safe_text(body)
+    """Kirim output teks dalam kartu UI baru."""
+    text = box_text(body, title=title or category or status)
     send_kwargs = dict(kwargs)
-
-    # Pyrogram 2.0.106 mencoba menambahkan ``_client`` ke setiap entity
-    # high-level yang diberikan secara manual. Entity expandable custom dan
-    # entity hasil Parser tidak menyediakan slot tersebut, sehingga request
-    # gagal sebelum dikirim dan seluruh plugin yang memakai send_ui() diam.
-    # Kirim teks melalui parser bawaan Pyrogram; isi pesan tetap dipertahankan.
     return await client.send_message(chat_id, text, **send_kwargs)
 
 
-async def edit_ui(client, message, body: str, reply_markup=None, **kwargs):
-    """Edit pesan dengan parser bawaan Pyrogram."""
-    text = safe_text(body)
+async def edit_ui(
+    client,
+    message,
+    body: str,
+    title: str = "",
+    emoji: str = "📦",
+    reply_markup=None,
+    **kwargs,
+):
+    """Edit pesan dengan kartu UI baru."""
+    text = box_text(body, title=title, emoji=emoji)
     return await client.edit_message_text(
         message.chat.id,
         message.id,

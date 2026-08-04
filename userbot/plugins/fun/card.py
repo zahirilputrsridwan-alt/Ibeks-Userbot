@@ -13,6 +13,7 @@ from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
 from utils.fun_card_generator import generate_fun_card
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -34,7 +35,13 @@ def setup(client):
             )
         except Exception as exc:
             logging.exception("[Card] Gagal generate card: %s", exc)
-            await client.send_message(chat_id, f"❌ Gagal generate card: {exc}")
+            await send_ui(
+                client,
+                chat_id,
+                f"Gagal generate card: {exc}",
+                title="CARD",
+                emoji="❌",
+            )
 
     @client.on_message(dynamic_command("cardp") & filters.me)
     async def cmd_cardp(client, message):

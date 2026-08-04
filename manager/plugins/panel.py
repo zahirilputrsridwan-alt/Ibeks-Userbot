@@ -18,7 +18,7 @@ from database import (
     renew_subscription,
     set_user_status,
 )
-from formatter import display_date, display_username
+from formatter import box_text, display_date, display_username
 from logger import log, safe_handler
 from runner import OFFLINE, ONLINE, STARTING, get_runner, running_clients
 from subscription import PLANS, expiry_label, remaining_days
@@ -75,7 +75,7 @@ def _panel_text() -> str:
     stats = _stats(_users())
     runner = get_runner()
     runtime = "Running" if runner else "Offline"
-    return (
+    return box_text((
         "━━━━━━━━━━━━━━━━━━━━━━\n\n"
         "📊 IBEKS MANAGER PANEL\n\n"
         f"👥 Total User: {stats['total']}\n"
@@ -86,7 +86,7 @@ def _panel_text() -> str:
         "💾 Database: SQLite\n"
         f"⚙ Runtime Status: {runtime} ({stats['active_runtime']} aktif)\n\n"
         "━━━━━━━━━━━━━━━━━━━━━━"
-    )
+    ), "MANAGER PANEL", "📊")
 
 
 def _panel_keyboard() -> InlineKeyboardMarkup:
@@ -117,7 +117,7 @@ def _back_panel_keyboard() -> InlineKeyboardMarkup:
 
 def _user_list_text(users: list[dict], title: str, page: int = 0) -> str:
     if not users:
-        return f"👥 {title}\n\nTidak ada user."
+        return box_text("Tidak ada user.", title, "👥")
     start = page * PAGE_SIZE
     selected = users[start : start + PAGE_SIZE]
     lines = [f"👥 {title}", ""]
@@ -134,12 +134,12 @@ def _user_list_text(users: list[dict], title: str, page: int = 0) -> str:
         )
     total_pages = (len(users) + PAGE_SIZE - 1) // PAGE_SIZE
     lines.append(f"Halaman {page + 1}/{total_pages}")
-    return "\n".join(lines)
+    return box_text("\n".join(lines), title, "👥")
 
 
 def _subscription_list_text(users: list[dict], page: int = 0) -> str:
     if not users:
-        return "📅 Subscription\n\nTidak ada user."
+        return box_text("Tidak ada user.", "SUBSCRIPTION", "📅")
     start = page * PAGE_SIZE
     selected = users[start : start + PAGE_SIZE]
     lines = ["📅 Subscription", ""]
@@ -157,7 +157,7 @@ def _subscription_list_text(users: list[dict], page: int = 0) -> str:
         )
     total_pages = (len(users) + PAGE_SIZE - 1) // PAGE_SIZE
     lines.append(f"Halaman {page + 1}/{total_pages}")
-    return "\n".join(lines)
+    return box_text("\n".join(lines), "SUBSCRIPTION", "📅")
 
 
 def _user_list_keyboard(
@@ -194,7 +194,7 @@ def _user_list_keyboard(
 
 def _detail_text(user: dict) -> str:
     runtime = "Online" if int(user["telegram_id"]) in _runtime_ids() else "Offline"
-    return (
+    return box_text((
         "👤 Detail User\n\n"
         f"Nama: {user.get('full_name') or 'Tidak diketahui'}\n"
         f"Username: {display_username(user.get('username'))}\n"
@@ -209,7 +209,7 @@ def _detail_text(user: dict) -> str:
         f"Login Terakhir: {display_date(user.get('login_at'))}\n"
         f"Runtime: {runtime}\n"
         "Version: IBEKS USERBOT v1.0.0"
-    )
+    ), "DETAIL USER", "👤")
 
 
 def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
@@ -260,23 +260,29 @@ def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
 
 def _subscription_text(user: dict) -> str:
     remaining = remaining_days(user)
-    return (
-        "📅 Subscription\n\n"
+    return box_text(
+        (
         f"Nama: {user.get('full_name') or 'Tidak diketahui'}\n"
         f"Plan: {user.get('plan') or 'FREE'}\n"
         f"Expired: {expiry_label(user)}\n"
         f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}\n"
         f"Status: {user.get('status') or 'Belum Aktif'}"
+        ),
+        "SUBSCRIPTION",
+        "📅",
     )
 
 
 def _subscription_success_text(user: dict) -> str:
     remaining = remaining_days(user)
-    return (
-        "✅ Subscription berhasil diperbarui.\n\n"
+    return box_text(
+        (
         f"Plan: {user.get('plan') or 'FREE'}\n"
         f"Expired: {expiry_label(user)}\n"
         f"Sisa Hari: {'Lifetime' if remaining == -1 else remaining}"
+        ),
+        "SUBSCRIPTION DIPERBARUI",
+        "✅",
     )
 
 
@@ -312,8 +318,8 @@ def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
 
 def _stats_text() -> str:
     stats = _stats(_users())
-    return (
-        "📊 Statistik Manager\n\n"
+    return box_text(
+        (
         f"Total User: {stats['total']}\n"
         f"User Aktif: {sum(user.get('status') == 'Active' for user in _users())}\n"
         f"User Online: {stats['online']}\n"
@@ -321,6 +327,9 @@ def _stats_text() -> str:
         f"Pending: {stats['pending']}\n"
         f"Rejected: {stats['rejected']}\n"
         f"Runtime Aktif: {stats['active_runtime']}\n"
+        ),
+        "STATISTIK MANAGER",
+        "📊",
     )
 
 
@@ -419,7 +428,7 @@ def setup(client):
     @safe_handler
     async def panel_command(_client, message):
         if not _is_owner(message):
-            await message.reply("❌ Akses ditolak.")
+            await message.reply(box_text("Akses ditolak.", "AKSES", "⛔"))
             return
         await message.reply(_panel_text(), reply_markup=_panel_keyboard())
 
@@ -485,7 +494,11 @@ def setup(client):
             await query.answer()
             _searching.add(query.from_user.id)
             await query.message.edit(
-                "🔍 Cari User\n\nKirim nama, username, atau Telegram ID.",
+                box_text(
+                    "Kirim nama, username, atau Telegram ID.",
+                    "CARI USER",
+                    "🔍",
+                ),
                 reply_markup=_back_panel_keyboard(),
             )
         elif action == "user":
@@ -603,8 +616,12 @@ def setup(client):
                 return
             await query.answer()
             await query.message.edit(
-                f"⚠️ Hapus user {telegram_id}?\n\n"
-                "Database, STRING_SESSION, approval, dan runtime akan dihapus.",
+                box_text(
+                    f"Hapus user {telegram_id}?\n"
+                    "Database, STRING_SESSION, approval, dan runtime akan dihapus.",
+                    "KONFIRMASI HAPUS",
+                    "⚠️",
+                ),
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [

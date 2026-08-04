@@ -30,7 +30,7 @@ from database import (
     mark_login_pending,
     save_login_success,
 )
-from formatter import full_name
+from formatter import box_text, full_name
 from logger import log, safe_handler
 from plugins.approval import notify_owner
 from runner import get_runner
@@ -123,13 +123,14 @@ async def begin_login(user, message: Message) -> None:
     runner = get_runner()
     if runner:
         runner.sync_user(telegram_id)
-    await message.edit("📲 Minta Akses\n\nMenunggu nomor Telegram Anda.")
+    await message.edit(box_text("Menunggu nomor Telegram Anda.", "MINTA AKSES", "📲"))
     await message.reply(
-        "━━━━━━━━━━━━━━━━━━\n\n"
-        "📱 Kirim Nomor Telegram\n\n"
-        'Silakan tekan tombol "Kirim Nomor Saya".\n\n'
-        "Telegram akan mengirim nomor Anda secara otomatis.\n\n"
-        "━━━━━━━━━━━━━━━━━━",
+        box_text(
+            'Silakan tekan tombol "Kirim Nomor Saya".\n'
+            "Telegram akan mengirim nomor Anda secara otomatis.",
+            "KIRIM NOMOR TELEGRAM",
+            "📱",
+        ),
         reply_markup=_phone_request_keyboard(),
     )
 
@@ -154,7 +155,7 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            "❌ Nomor Telegram tidak valid. Silakan mulai lagi.",
+            box_text("Nomor Telegram tidak valid. Silakan mulai lagi.", "LOGIN", "❌"),
             reply_markup=home_keyboard(),
         )
         return
@@ -168,7 +169,11 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
+            box_text(
+                f"Coba lagi dalam {error.value} detik.",
+                "LOGIN",
+                "⏳",
+            ),
             reply_markup=home_keyboard(),
         )
         return
@@ -178,7 +183,7 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            "❌ Kode login tidak dapat dikirim. Silakan coba lagi.",
+            box_text("Kode login tidak dapat dikirim. Silakan coba lagi.", "LOGIN", "❌"),
             reply_markup=home_keyboard(),
         )
         return
@@ -189,8 +194,12 @@ async def _send_code(
     state.stage = "code"
     mark_login_pending(state.telegram_id, phone_number)
     await message.reply(
-        "🔐 Kode login sudah dikirim oleh Telegram.\n\n"
-        "Masukkan kode yang Anda terima.",
+        box_text(
+            "Kode login sudah dikirim oleh Telegram.\n"
+            "Masukkan kode yang Anda terima.",
+            "VERIFIKASI OTP",
+            "🔐",
+        ),
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -225,24 +234,25 @@ async def _complete_login(
             state.telegram_id,
         )
         await message.reply(
-            "━━━━━━━━━━━━━━━━━━\n\n"
-            "🎉 Selamat!\n\n"
-            "Login Owner berhasil.\n\n"
-            "Status:\n"
-            "🟢 Active\n\n"
-            "Owner memiliki akses penuh tanpa approval.\n\n"
-            "━━━━━━━━━━━━━━━━━━",
+            box_text(
+                "Login Owner berhasil.\n"
+                "Status: 🟢 Active\n"
+                "Owner memiliki akses penuh tanpa approval.",
+                "LOGIN BERHASIL",
+                "🎉",
+            ),
             reply_markup=home_keyboard(),
         )
         return
 
     await message.reply(
-        "━━━━━━━━━━━━━━━━━━\n\n"
-        "⏳ Permintaan Anda berhasil dikirim.\n\n"
-        "Mohon tunggu hingga Admin menyetujui akun Anda.\n\n"
-        "Status:\n"
-        "🟡 Menunggu Persetujuan\n\n"
-        "━━━━━━━━━━━━━━━━━━",
+        box_text(
+            "Permintaan Anda berhasil dikirim.\n"
+            "Mohon tunggu hingga Admin menyetujui akun Anda.\n"
+            "Status: 🟡 Menunggu Persetujuan",
+            "PERMINTAAN TERKIRIM",
+            "⏳",
+        ),
         reply_markup=home_keyboard(),
     )
     await notify_owner(manager_client, state.telegram_id)
@@ -265,15 +275,19 @@ async def _check_code(
     except SessionPasswordNeeded:
         state.stage = "password"
         await message.reply(
-            "🔒 Akun ini menggunakan Password 2FA.\n\n"
-            "Masukkan Password 2FA Anda.",
+            box_text(
+                "Akun ini menggunakan Password 2FA.\n"
+                "Masukkan Password 2FA Anda.",
+                "PASSWORD 2FA",
+                "🔒",
+            ),
             reply_markup=_login_keyboard(),
         )
         return
     except PhoneCodeInvalid:
         log.warning("PhoneCodeInvalid pada login user %s.", state.telegram_id)
         await message.reply(
-            "❌ Kode salah. Silakan masukkan kode yang benar.",
+            box_text("Kode salah. Silakan masukkan kode yang benar.", "OTP", "❌"),
             reply_markup=_login_keyboard(),
         )
         return
@@ -282,7 +296,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "⌛ Kode login sudah kedaluwarsa. Silakan mulai lagi.",
+            box_text("Kode login sudah kedaluwarsa. Silakan mulai lagi.", "OTP", "⌛"),
             reply_markup=home_keyboard(),
         )
         return
@@ -295,7 +309,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
+            box_text(f"Coba lagi dalam {error.value} detik.", "OTP", "⏳"),
             reply_markup=home_keyboard(),
         )
         return
@@ -304,7 +318,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "❌ Verifikasi login gagal. Silakan mulai lagi.",
+            box_text("Verifikasi login gagal. Silakan mulai lagi.", "LOGIN", "❌"),
             reply_markup=home_keyboard(),
         )
         return
@@ -316,7 +330,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "❌ Login belum dapat diselesaikan. Silakan mulai lagi.",
+            box_text("Login belum dapat diselesaikan. Silakan mulai lagi.", "LOGIN", "❌"),
             reply_markup=home_keyboard(),
         )
 
@@ -334,7 +348,7 @@ async def _check_password(
     except PasswordHashInvalid:
         log.warning("PasswordHashInvalid pada login user %s.", state.telegram_id)
         await message.reply(
-            "❌ Password 2FA salah. Silakan coba lagi.",
+            box_text("Password 2FA salah. Silakan coba lagi.", "PASSWORD 2FA", "❌"),
             reply_markup=_login_keyboard(),
         )
         return
@@ -347,7 +361,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
+            box_text(f"Coba lagi dalam {error.value} detik.", "PASSWORD 2FA", "⏳"),
             reply_markup=home_keyboard(),
         )
         return
@@ -356,7 +370,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "❌ Verifikasi Password 2FA gagal. Silakan mulai lagi.",
+            box_text("Verifikasi Password 2FA gagal. Silakan mulai lagi.", "PASSWORD 2FA", "❌"),
             reply_markup=home_keyboard(),
         )
         return
@@ -368,7 +382,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "❌ Login belum dapat diselesaikan. Silakan mulai lagi.",
+            box_text("Login belum dapat diselesaikan. Silakan mulai lagi.", "LOGIN", "❌"),
             reply_markup=home_keyboard(),
         )
 
@@ -385,7 +399,7 @@ def setup(client):
             mark_login_failed(query.from_user.id)
         if query.message:
             await query.message.edit(
-                "❌ Proses login dibatalkan.",
+                box_text("Proses login dibatalkan.", "LOGIN", "❌"),
                 reply_markup=home_keyboard(),
             )
 
@@ -404,7 +418,7 @@ def setup(client):
         contact = message.contact
         if contact.user_id != message.from_user.id:
             await message.reply(
-                '❌ Gunakan tombol "Kirim Nomor Saya".',
+                box_text('Gunakan tombol "Kirim Nomor Saya".', "NOMOR TELEGRAM", "❌"),
                 reply_markup=_phone_request_keyboard(),
             )
             return
@@ -416,7 +430,11 @@ def setup(client):
                 message.from_user.id,
             )
             await message.reply(
-                "❌ Nomor Telegram tidak valid. Silakan gunakan tombol lagi.",
+                box_text(
+                    "Nomor Telegram tidak valid. Silakan gunakan tombol lagi.",
+                    "NOMOR TELEGRAM",
+                    "❌",
+                ),
                 reply_markup=_phone_request_keyboard(),
             )
             return
@@ -439,12 +457,12 @@ def setup(client):
                 await _finish_state(message.from_user.id)
                 mark_login_failed(message.from_user.id)
                 await message.reply(
-                    "❌ Proses login dibatalkan.",
+                    box_text("Proses login dibatalkan.", "LOGIN", "❌"),
                     reply_markup=ReplyKeyboardRemove(),
                 )
                 return
             await message.reply(
-                '❌ Gunakan tombol "Kirim Nomor Saya".',
+                box_text('Gunakan tombol "Kirim Nomor Saya".', "NOMOR TELEGRAM", "❌"),
                 reply_markup=_phone_request_keyboard(),
             )
         elif state.stage == "code":

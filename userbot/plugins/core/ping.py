@@ -19,7 +19,7 @@ from utils.autodelete import auto_delete
 from utils.helper import get_ram_usage, get_cpu_usage
 from utils.uptime import format_uptime
 from utils.filters import dynamic_command
-from plugins.utils.ui import send_ui
+from plugins.utils.ui import box_text, edit_ui, send_ui
 
 
 def setup(client):
@@ -51,26 +51,23 @@ def setup(client):
         cpu = get_cpu_usage()
         uptime = format_uptime()
 
-        text = (
-            "╭━━━━━━━━━━━━━━━━━━━━━━╮\n"
-            "        💀 INFO STATUS\n"
-            "╰━━━━━━━━━━━━━━━━━━━━━━╯\n"
-            "\n"
-            f"🏓 **Ping**      : `{ping_ms} ms`\n"
-            f"⚡ **API Ping**  : `{api_ping_ms} ms`\n"
-            f"⏰ **Uptime**    : `{uptime}`\n"
-            f"💾 **RAM**       : `{ram}%`\n"
-            f"🖥 **CPU**       : `{cpu}%`\n"
-            "\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n"
-            "\n"
-            f"👤 **Owner**     : `{owner}`\n"
-            f"🤖 **{BOT_NAME}**\n"
-            f"📦 **Version**   : `{VERSION}`\n"
-            "\n"
-            "╰━━━━━━━━━━━━━━━━━━━━━━╯"
+        text = box_text(
+            "\n".join(
+                (
+                    f"Ping: `{ping_ms} ms`",
+                    f"API Ping: `{api_ping_ms} ms`",
+                    f"Uptime: `{uptime}`",
+                    f"RAM: `{ram}%`",
+                    f"CPU: `{cpu}%`",
+                    f"Owner: `{owner}`",
+                    f"Bot: `{BOT_NAME}`",
+                    f"Version: `{VERSION}`",
+                )
+            ),
+            title="STATUS",
+            emoji="🏓",
         )
         try:
-            await sent.edit(text)
+            await edit_ui(client, sent, text)
         except Exception:
             pass

@@ -11,8 +11,8 @@ from pyrogram import filters
 
 from config import AUTO_DELETE_CMD, LOGS_DIR
 from utils.autodelete import auto_delete
-from utils.formatter import format_status
 from utils.filters import dynamic_command
+from plugins.utils.ui import send_ui
 
 
 def setup(client):
@@ -27,7 +27,7 @@ def setup(client):
         log_file = os.path.join(LOGS_DIR, "ibeks.log")
 
         if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
-            await client.send_message(chat_id, format_status(False, "Tidak ada log."))
+            await send_ui(client, chat_id, "Tidak ada log.", title="LOG", emoji="⚠️")
             return
 
         try:
@@ -39,4 +39,10 @@ def setup(client):
         except Exception as exc:
             from utils.logger import log
             log.exception(f"[Logs] Gagal mengirim log: {exc}")
-            await client.send_message(chat_id, format_status(False, "Gagal mengirim file log."))
+            await send_ui(
+                client,
+                chat_id,
+                "Gagal mengirim file log.",
+                title="LOG",
+                emoji="❌",
+            )
