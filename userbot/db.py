@@ -106,6 +106,15 @@ def init_db() -> None:
         )
     """)
 
+    # ── Tabel: chat_lock ───────────────────────────────────────────────────────
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_lock (
+            chat_id     INTEGER PRIMARY KEY,
+            locked      INTEGER NOT NULL DEFAULT 0,
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )
+    """)
+
     conn.commit()
     log.info("[DB] Database diinisialisasi.")
 
@@ -174,3 +183,31 @@ def list_blacklist() -> list[dict]:
         "SELECT chat_id, chat_title, created_at FROM blacklist ORDER BY created_at DESC"
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+# ── Helper: chat lock ─────────────────────────────────────────────────────────
+
+def set_chat_lock(chat_id: int, locked: bool) -> None:
+    """Simpan status lock untuk chat tertentu."""
+    conn = get_conn()
+    conn.execute(
+        """
+        INSERT INTO chat_lock (chat_id, locked, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(chat_id) DO UPDATE SET
+            locked = excluded.locked,
+            updated_at = excluded.updated_at
+        """,
+        (chat_id, int(bool(locked))),
+    )
+    conn.commit()
+
+
+def is_chat_locked(chat_id: int) -> bool:
+    """Kembalikan True bila chat memiliki status lock aktif."""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT locked FROM chat_lock WHERE chat_id = ?",
+        (chat_id,),
+    ).fetchone()
+    return bool(row and row["locked"])

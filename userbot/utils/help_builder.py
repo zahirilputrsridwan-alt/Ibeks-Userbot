@@ -28,6 +28,13 @@ except (ImportError, AttributeError):
 
 HELP_FOOTER = "⨱ IBEKS USERBOT ⨱"
 PAGE_SIZE = 8
+UTILITY_DESCRIPTIONS = {
+    "lock": "Mengunci chat",
+    "unlock": "Membuka kunci chat",
+    "tt": "Download TikTok",
+    "ig": "Download Instagram",
+    "tgdl": "Download Telegram Private",
+}
 
 
 @dataclass(frozen=True)
@@ -57,6 +64,8 @@ class CategoryInfo:
 
 def _category_name(folder_name: str) -> str:
     """Buat label dari nama folder, tanpa mapping kategori hardcode."""
+    if folder_name.casefold() == "utility":
+        return "🔒 Utility"
     return folder_name.replace("-", " ").replace("_", " ").title()
 
 
@@ -266,6 +275,12 @@ def build_category_text(
         f"📂 {category.name}",
         "",
     ]
-    lines.extend(f"• {prefix}{command}" for command in category.commands)
+    for command in category.commands:
+        description = (
+            f" — {UTILITY_DESCRIPTIONS[command]}"
+            if category.key == "utility" and command in UTILITY_DESCRIPTIONS
+            else ""
+        )
+        lines.append(f"• {prefix}{command}{description}")
     lines.extend(["", HELP_FOOTER])
     return "\n".join(lines)

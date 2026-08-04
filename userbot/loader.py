@@ -39,6 +39,7 @@ def plugin_category(module_name: str) -> str:
         "core": "Core",
         "fun": "Fun",
         "permission": "Permission",
+        "utility": "Utility",
         "voice": "Voice",
     }.get(category, category.replace("_", " ").title())
 

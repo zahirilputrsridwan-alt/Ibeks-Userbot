@@ -19,3 +19,4 @@
 - [Owner Userbot approval bypass](owner-userbot-approval-bypass.md) — Owner startup bypasses approval; ordinary Userbots require approved access and both runtimes have separate workflows.
 - [Command auto-delete policy](command-auto-delete-policy.md) — preserve command history by default; use one central allowlist for exceptions.
 - [Voice Chat Manager panel](voice-chat-manager-panel.md) — keep Voice Chat status and controls private in Manager via runtime IPC.
+- [Utility lock and downloader](utility-lock-downloader.md) — keep chat locks in Userbot SQLite and restrict downloads to TikTok, Instagram, and accessible Telegram media.
