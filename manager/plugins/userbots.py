@@ -19,27 +19,22 @@ def _owner(query_or_message) -> bool:
 
 def _userbots_text(users: list[dict]) -> str:
     if not users:
-        return (
-            "╭─「 🤖 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 𝗠𝗔𝗡𝗔𝗚𝗘𝗥 」\n│\n"
-            "├ 👤 𝗔𝗸𝘂𝗻\n│  ╰➤ Belum ada akun terdaftar.\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-        )
-    lines = ["╭─「 🤖 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 𝗠𝗔𝗡𝗔𝗚𝗘𝗥 」", "│"]
+        return "🤖 Userbot Manager\n\nBelum ada akun terdaftar."
+    lines = ["🤖 Userbot Manager", ""]
     for user in users:
         lines.extend(
             [
-                f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user.get('full_name') or 'Tidak diketahui'}",
-                f"├ 🆔 𝗜𝗗\n│  ╰➤ `{user['telegram_id']}`",
-                f"├ 🔗 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲\n│  ╰➤ {display_username(user.get('username'))}",
-                f"├ 🔐 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ {user.get('status') or 'Belum Aktif'} / "
+                f"👤 {user.get('full_name') or 'Tidak diketahui'}",
+                f"ID: `{user['telegram_id']}`",
+                f"Username: {display_username(user.get('username'))}",
+                f"Akses: {user.get('status') or 'Belum Aktif'} / "
                 f"{user.get('approval_status') or 'pending'}",
-                f"├ 🤖 𝗨𝘀𝗲𝗿𝗯𝗼𝘁\n│  ╰➤ {user.get('userbot_status') or 'Offline'}",
-                f"├ ▶️ 𝗠𝘂𝗹𝗮𝗶\n│  ╰➤ {display_date(user.get('last_started'))}",
+                f"Userbot: {user.get('userbot_status') or 'Offline'}",
+                f"Mulai: {display_date(user.get('last_started'))}",
                 "",
             ]
         )
-    lines.append("╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
-    return "\n".join(lines)
+    return "\n".join(lines).strip()
 
 
 def _userbots_keyboard(users: list[dict]) -> InlineKeyboardMarkup | None:
@@ -75,11 +70,7 @@ async def _render(message, *, answer: str | None = None) -> None:
         reply_markup=_userbots_keyboard(users),
     )
     if answer:
-        await message.reply(
-            "╭─「 ℹ️ 𝗛𝗔𝗦𝗜𝗟 𝗔𝗞𝗦𝗜 」\n│\n"
-            f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {answer}\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-        )
+        await message.reply(answer)
 
 
 def setup(client):
@@ -87,11 +78,7 @@ def setup(client):
     @safe_handler
     async def userbots_command(_client, message):
         if not _owner(message):
-            await message.reply(
-                "╭─「 ⛔ 𝗔𝗞𝗦𝗘𝗦 」\n│\n"
-                "├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Akses ditolak.\n"
-                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-            )
+            await message.reply("⛔ Akses ditolak.")
             return
         users = list_users()
         await message.reply(

@@ -123,16 +123,13 @@ async def begin_login(user, message: Message) -> None:
     runner = get_runner()
     if runner:
         runner.sync_user(telegram_id)
-    await message.edit(
-        "╭─「 📲 𝗠𝗜𝗡𝗧𝗔 𝗔𝗞𝗦𝗘𝗦 」\n│\n"
-        "├ 📱 𝗡𝗼𝗺𝗼𝗿 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺\n│  ╰➤ Menunggu nomor Telegram Anda.\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-    )
+    await message.edit("📲 Minta Akses\n\nMenunggu nomor Telegram Anda.")
     await message.reply(
-        "╭─「 📱 𝗞𝗜𝗥𝗜𝗠 𝗡𝗢𝗠𝗢𝗥 𝗧𝗘𝗟𝗘𝗚𝗥𝗔𝗠 」\n│\n"
-        '├ 📲 𝗧𝗼𝗺𝗯𝗼𝗹\n│  ╰➤ Tekan \"Kirim Nomor Saya\".\n'
-        "├ 📱 𝗣𝗿𝗼𝘀𝗲𝘀\n│  ╰➤ Telegram mengirim nomor otomatis.\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        "📱 Kirim Nomor Telegram\n\n"
+        'Silakan tekan tombol "Kirim Nomor Saya".\n\n'
+        "Telegram akan mengirim nomor Anda secara otomatis.\n\n"
+        "━━━━━━━━━━━━━━━━━━",
         reply_markup=_phone_request_keyboard(),
     )
 
@@ -157,7 +154,7 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ Nomor Telegram tidak valid. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Nomor Telegram tidak valid. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -171,7 +168,7 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            f"╭─「 ⏳ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ ⏱ 𝗪𝗮𝗸𝘁𝘂\n│  ╰➤ Coba lagi dalam {error.value} detik.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
             reply_markup=home_keyboard(),
         )
         return
@@ -181,7 +178,7 @@ async def _send_code(
         mark_login_failed(state.telegram_id)
         _login_states.pop(state.telegram_id, None)
         await message.reply(
-            "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 🔐 𝗞𝗼𝗱𝗲\n│  ╰➤ Kode login tidak dapat dikirim. Silakan coba lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Kode login tidak dapat dikirim. Silakan coba lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -192,10 +189,8 @@ async def _send_code(
     state.stage = "code"
     mark_login_pending(state.telegram_id, phone_number)
     await message.reply(
-        "╭─「 🔐 𝗩𝗘𝗥𝗜𝗙𝗜𝗞𝗔𝗦𝗜 𝗢𝗧𝗣 」\n│\n"
-        "├ 🔐 𝗞𝗼𝗱𝗲\n│  ╰➤ Kode login sudah dikirim Telegram.\n"
-        "├ 📲 𝗜𝗻𝗽𝘂𝘁\n│  ╰➤ Masukkan kode yang Anda terima.\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+        "🔐 Kode login sudah dikirim oleh Telegram.\n\n"
+        "Masukkan kode yang Anda terima.",
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -230,20 +225,24 @@ async def _complete_login(
             state.telegram_id,
         )
         await message.reply(
-            "╭─「 🎉 𝗟𝗢𝗚𝗜𝗡 𝗕𝗘𝗥𝗛𝗔𝗦𝗜𝗟 」\n│\n"
-            "├ 👤 𝗔𝗸𝘂𝗻\n│  ╰➤ Owner\n"
-            "├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ 🟢 Active\n"
-            "├ 🔐 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ Penuh tanpa approval.\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "🎉 Selamat!\n\n"
+            "Login Owner berhasil.\n\n"
+            "Status:\n"
+            "🟢 Active\n\n"
+            "Owner memiliki akses penuh tanpa approval.\n\n"
+            "━━━━━━━━━━━━━━━━━━",
             reply_markup=home_keyboard(),
         )
         return
 
     await message.reply(
-        "╭─「 ⏳ 𝗣𝗘𝗥𝗠𝗜𝗡𝗧𝗔𝗔𝗡 𝗧𝗘𝗥𝗞𝗜𝗥𝗜𝗠 」\n│\n"
-        "├ 📤 𝗣𝗲𝗿𝗺𝗶𝗻𝘁𝗮𝗮𝗻\n│  ╰➤ Berhasil dikirim.\n"
-        "├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ 🟡 Menunggu persetujuan.\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+        "━━━━━━━━━━━━━━━━━━\n\n"
+        "⏳ Permintaan Anda berhasil dikirim.\n\n"
+        "Mohon tunggu hingga Admin menyetujui akun Anda.\n\n"
+        "Status:\n"
+        "🟡 Menunggu Persetujuan\n\n"
+        "━━━━━━━━━━━━━━━━━━",
         reply_markup=home_keyboard(),
     )
     await notify_owner(manager_client, state.telegram_id)
@@ -266,16 +265,15 @@ async def _check_code(
     except SessionPasswordNeeded:
         state.stage = "password"
         await message.reply(
-            "╭─「 🔒 𝗣𝗔𝗦𝗦𝗪𝗢𝗥𝗗 𝟮𝗙𝗔 」\n│\n"
-            "├ 🔐 𝗣𝗮𝘀𝘀𝘄𝗼𝗿𝗱\n│  ╰➤ Masukkan Password 2FA Anda.\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "🔒 Akun ini menggunakan Password 2FA.\n\n"
+            "Masukkan Password 2FA Anda.",
             reply_markup=_login_keyboard(),
         )
         return
     except PhoneCodeInvalid:
         log.warning("PhoneCodeInvalid pada login user %s.", state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗢𝗧𝗣 」\n│\n├ 🔐 𝗞𝗼𝗱𝗲\n│  ╰➤ Salah. Masukkan kode yang benar.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Kode salah. Silakan masukkan kode yang benar.",
             reply_markup=_login_keyboard(),
         )
         return
@@ -284,7 +282,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "╭─「 ⌛ 𝗢𝗧𝗣 」\n│\n├ 🔐 𝗞𝗼𝗱𝗲\n│  ╰➤ Sudah kedaluwarsa. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "⌛ Kode login sudah kedaluwarsa. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -297,7 +295,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            f"╭─「 ⏳ 𝗢𝗧𝗣 」\n│\n├ ⏱ 𝗪𝗮𝗸𝘁𝘂\n│  ╰➤ Coba lagi dalam {error.value} detik.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
             reply_markup=home_keyboard(),
         )
         return
@@ -306,7 +304,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 🔐 𝗩𝗲𝗿𝗶𝗳𝗶𝗸𝗮𝘀𝗶\n│  ╰➤ Gagal. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Verifikasi login gagal. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -318,7 +316,7 @@ async def _check_code(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 🔐 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Belum dapat diselesaikan. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Login belum dapat diselesaikan. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
 
@@ -336,7 +334,7 @@ async def _check_password(
     except PasswordHashInvalid:
         log.warning("PasswordHashInvalid pada login user %s.", state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗣𝗔𝗦𝗦𝗪𝗢𝗥𝗗 𝟮𝗙𝗔 」\n│\n├ 🔐 𝗣𝗮𝘀𝘀𝘄𝗼𝗿𝗱\n│  ╰➤ Salah. Silakan coba lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Password 2FA salah. Silakan coba lagi.",
             reply_markup=_login_keyboard(),
         )
         return
@@ -349,7 +347,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            f"╭─「 ⏳ 𝗣𝗔𝗦𝗦𝗪𝗢𝗥𝗗 𝟮𝗙𝗔 」\n│\n├ ⏱ 𝗪𝗮𝗸𝘁𝘂\n│  ╰➤ Coba lagi dalam {error.value} detik.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            f"⏳ Terlalu banyak percobaan. Coba lagi dalam {error.value} detik.",
             reply_markup=home_keyboard(),
         )
         return
@@ -358,7 +356,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗣𝗔𝗦𝗦𝗪𝗢𝗥𝗗 𝟮𝗙𝗔 」\n│\n├ 🔐 𝗩𝗲𝗿𝗶𝗳𝗶𝗸𝗮𝘀𝗶\n│  ╰➤ Gagal. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Verifikasi Password 2FA gagal. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
         return
@@ -370,7 +368,7 @@ async def _check_password(
         await _finish_state(state.telegram_id)
         mark_login_failed(state.telegram_id)
         await message.reply(
-            "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 🔐 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Belum dapat diselesaikan. Silakan mulai lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            "❌ Login belum dapat diselesaikan. Silakan mulai lagi.",
             reply_markup=home_keyboard(),
         )
 
@@ -387,7 +385,7 @@ def setup(client):
             mark_login_failed(query.from_user.id)
         if query.message:
             await query.message.edit(
-                "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Proses login dibatalkan.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                "❌ Proses login dibatalkan.",
                 reply_markup=home_keyboard(),
             )
 
@@ -406,7 +404,7 @@ def setup(client):
         contact = message.contact
         if contact.user_id != message.from_user.id:
             await message.reply(
-                "╭─「 ❌ 𝗡𝗢𝗠𝗢𝗥 𝗧𝗘𝗟𝗘𝗚𝗥𝗔𝗠 」\n│\n├ 📲 𝗧𝗼𝗺𝗯𝗼𝗹\n│  ╰➤ Gunakan tombol \"Kirim Nomor Saya\".\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                '❌ Gunakan tombol "Kirim Nomor Saya".',
                 reply_markup=_phone_request_keyboard(),
             )
             return
@@ -418,7 +416,7 @@ def setup(client):
                 message.from_user.id,
             )
             await message.reply(
-                "╭─「 ❌ 𝗡𝗢𝗠𝗢𝗥 𝗧𝗘𝗟𝗘𝗚𝗥𝗔𝗠 」\n│\n├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ Tidak valid. Silakan gunakan tombol lagi.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                "❌ Nomor Telegram tidak valid. Silakan gunakan tombol lagi.",
                 reply_markup=_phone_request_keyboard(),
             )
             return
@@ -441,12 +439,12 @@ def setup(client):
                 await _finish_state(message.from_user.id)
                 mark_login_failed(message.from_user.id)
                 await message.reply(
-                    "╭─「 ❌ 𝗟𝗢𝗚𝗜𝗡 」\n│\n├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Proses login dibatalkan.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                    "❌ Proses login dibatalkan.",
                     reply_markup=ReplyKeyboardRemove(),
                 )
                 return
             await message.reply(
-                "╭─「 ❌ 𝗡𝗢𝗠𝗢𝗥 𝗧𝗘𝗟𝗘𝗚𝗥𝗔𝗠 」\n│\n├ 📲 𝗧𝗼𝗺𝗯𝗼𝗹\n│  ╰➤ Gunakan tombol \"Kirim Nomor Saya\".\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                '❌ Gunakan tombol "Kirim Nomor Saya".',
                 reply_markup=_phone_request_keyboard(),
             )
         elif state.stage == "code":

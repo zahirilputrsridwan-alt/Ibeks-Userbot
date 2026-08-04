@@ -42,3 +42,9 @@ Text UI must not generate generic labels, fallback fields, or inferred headings.
 **Why:** Telegram Android rendered the submitted `messageEntityBlockquote` as plain text, so keeping the unused raw-MTProto helper would add complexity without usable UI.
 
 **How to apply:** Do not reintroduce or roll out expandable entities unless a future client-rendered proof is independently confirmed.
+
+**Scope rule:** The shared UI System is limited to ordinary text-only plugin output. Restore direct message sending for media, animation, Voice Chat, and inline/keyboard panel flows.
+
+**Why:** Applying presentation wrappers to interactive or media flows changed their established behavior and made rollback/debugging harder without improving those interfaces.
+
+**How to apply:** Before changing a sender, classify the plugin by output type. Preserve handlers, callbacks, permissions, auto-delete, sessions, and lifecycle logic; change only the text body for eligible text-only plugins.

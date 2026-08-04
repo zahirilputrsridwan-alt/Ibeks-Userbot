@@ -50,38 +50,24 @@ def _detail_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
 
 def _approval_request_text(user_data: dict) -> str:
     return (
-        "╭─「 📥 𝗣𝗘𝗥𝗠𝗜𝗡𝗧𝗔𝗔𝗡 𝗕𝗔𝗥𝗨 」\n│\n"
-        f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user_data.get('full_name') or 'Tidak diketahui'}\n"
-        f"├ 🔗 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲\n│  ╰➤ {display_username(user_data.get('username'))}\n"
-        f"├ 🆔 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺 𝗜𝗗\n│  ╰➤ {user_data.get('telegram_id')}\n"
-        f"├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ {user_data.get('phone_number') or 'Tidak tersedia'}\n"
-        f"├ 🕒 𝗪𝗮𝗸𝘁𝘂 𝗟𝗼𝗴𝗶𝗻\n│  ╰➤ {display_date(user_data.get('login_at'))}\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+        "📥 Permintaan Baru\n\n"
+        f"Nama: {user_data.get('full_name') or 'Tidak diketahui'}\n"
+        f"Username: {display_username(user_data.get('username'))}\n"
+        f"Telegram ID: {user_data.get('telegram_id')}\n"
+        f"Nomor: {user_data.get('phone_number') or 'Tidak tersedia'}\n"
+        f"Waktu Login: {display_date(user_data.get('login_at'))}"
     )
 
 
 def _detail_text(user_data: dict) -> str:
     return (
-        "╭─「 👤 𝗗𝗘𝗧𝗔𝗜𝗟 𝗣𝗘𝗡𝗚𝗚𝗨𝗡𝗔 」\n│\n"
-        f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user_data.get('full_name') or 'Tidak diketahui'}\n"
-        f"├ 🔗 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲\n│  ╰➤ {display_username(user_data.get('username'))}\n"
-        f"├ 🆔 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺 𝗜𝗗\n│  ╰➤ {user_data.get('telegram_id')}\n"
-        f"├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ {user_data.get('phone_number') or 'Tidak tersedia'}\n"
-        f"├ 📅 𝗧𝗮𝗻𝗴𝗴𝗮𝗹 𝗟𝗼𝗴𝗶𝗻\n│  ╰➤ {display_date(user_data.get('login_at'))}\n"
-        f"├ ✅ 𝗦𝘁𝗮𝘁𝘂𝘀 𝗔𝗽𝗽𝗿𝗼𝘃𝗮𝗹\n│  ╰➤ {user_data.get('approval_status') or 'pending'}\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-    )
-
-
-def _with_status(user_data: dict, status: str, emoji: str) -> str:
-    return (
-        f"╭─「 {emoji} 𝗣𝗘𝗥𝗠𝗜𝗡𝗧𝗔𝗔𝗡 𝗕𝗔𝗥𝗨 」\n│\n"
-        f"├ 👤 𝗡𝗮𝗺𝗮\n│  ╰➤ {user_data.get('full_name') or 'Tidak diketahui'}\n"
-        f"├ 🆔 𝗧𝗲𝗹𝗲𝗴𝗿𝗮𝗺 𝗜𝗗\n│  ╰➤ {user_data.get('telegram_id')}\n"
-        f"├ 📱 𝗡𝗼𝗺𝗼𝗿\n│  ╰➤ {user_data.get('phone_number') or 'Tidak tersedia'}\n"
-        f"├ 🕒 𝗪𝗮𝗸𝘁𝘂 𝗟𝗼𝗴𝗶𝗻\n│  ╰➤ {display_date(user_data.get('login_at'))}\n"
-        f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {status}\n"
-        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+        "👤 Detail Pengguna\n\n"
+        f"Nama: {user_data.get('full_name') or 'Tidak diketahui'}\n"
+        f"Username: {display_username(user_data.get('username'))}\n"
+        f"Telegram ID: {user_data.get('telegram_id')}\n"
+        f"Nomor: {user_data.get('phone_number') or 'Tidak tersedia'}\n"
+        f"Tanggal Login: {display_date(user_data.get('login_at'))}\n"
+        f"Status Approval: {user_data.get('approval_status') or 'pending'}"
     )
 
 
@@ -106,12 +92,7 @@ async def notify_owner(client, telegram_id: int) -> None:
 
 async def _notify_user(client, telegram_id: int, text: str) -> None:
     try:
-        await client.send_message(
-            telegram_id,
-            "╭─「 🔐 𝗦𝗧𝗔𝗧𝗨𝗦 𝗔𝗞𝗦𝗘𝗦 」\n│\n"
-            f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {text}\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-        )
+        await client.send_message(telegram_id, text)
     except Exception:
         log.exception("Gagal mengirim hasil approval ke user %s.", telegram_id)
 
@@ -162,12 +143,13 @@ def setup(client):
             updated = approve_user(telegram_id, OWNER_ID)
             if not updated:
                 await query.message.edit(
-                    _with_status(user_data, "sudah diproses.", "ℹ️"),
+                    _approval_request_text(user_data)
+                    + "\n\nStatus: sudah diproses.",
                     reply_markup=None,
                 )
                 return
             await query.message.edit(
-                _with_status(updated, "approved.", "✅"),
+                _approval_request_text(updated) + "\n\n✅ Status: approved.",
                 reply_markup=None,
             )
             await _notify_user(
@@ -189,12 +171,12 @@ def setup(client):
         updated = reject_user(telegram_id)
         if not updated:
             await query.message.edit(
-                _with_status(user_data, "user tidak ditemukan.", "ℹ️"),
+                _approval_request_text(user_data) + "\n\nStatus: user tidak ditemukan.",
                 reply_markup=None,
             )
             return
         await query.message.edit(
-            _with_status(updated, "rejected.", "❌"),
+            _approval_request_text(updated) + "\n\n❌ Status: rejected.",
             reply_markup=None,
         )
         await _notify_user(
