@@ -38,9 +38,13 @@ def setup(client):
             await send_ui(
                 client,
                 chat_id,
-                f"Gagal generate card: {exc}",
-                title="CARD",
-                emoji="❌",
+                (
+                    "╭─「 ❌ 𝗖𝗔𝗥𝗗 」\n│\n"
+                    f"├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ {target.first_name or 'User'}\n"
+                    f"├ 🎴 𝗝𝗲𝗻𝗶𝘀\n│  ╰➤ {card_type}\n"
+                    f"├ ⚠️ 𝗘𝗿𝗿𝗼𝗿\n│  ╰➤ Gagal generate card: {exc}\n"
+                    "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+                ),
             )
 
     @client.on_message(dynamic_command("cardp") & filters.me)

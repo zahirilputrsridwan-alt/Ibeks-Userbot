@@ -143,19 +143,16 @@ def _ctitit_report(user: User) -> str:
     indices = _stable_indices(user.id, "ctitit")
     level = indices[0]
     return (
-        "🔞 CEK TITIT — REPORT 🔞\n"
-        "━━━━━━ ★ ━━━━━━\n\n"
-        f"👤 Target: `{_display_name(user)}`\n"
-        f"🔑 ID: `{user.id}`\n\n"
-        "📊 Rating Kontol\n"
-        f"{_progress(_CTITIT_PERCENTAGES[level])}\n\n"
-        f"🔖 PANJANG: {_pick(_CTITIT_LEVELS, level)}\n\n"
-        f"😈 BENTUK: {_pick(_CTITIT_SHAPES, indices[1])}\n\n"
-        f"💖 KEBERSIHAN: {_pick(_CTITIT_CLEANLINESS, indices[2])}\n\n"
-        f"⭐ KEUNGGULAN: {_pick(_CTITIT_ADVANTAGES, indices[3])}\n\n"
-        f"🔞 TIER: {_pick(_CTITIT_TIERS, indices[4])}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        "⨱ IBEKS UBOT ⨱"
+        "╭─「 🔞 𝗖𝗘𝗞 𝗧𝗜𝗧𝗜𝗧 」\n│\n"
+        f"├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{_display_name(user)}`\n"
+        f"├ 🆔 𝗜𝗗\n│  ╰➤ `{user.id}`\n"
+        f"├ 📊 𝗥𝗮𝘁𝗶𝗻𝗴 𝗞𝗼𝗻𝘁𝗼𝗹\n│  ╰➤ {_progress(_CTITIT_PERCENTAGES[level])}\n"
+        f"├ 🔖 𝗣𝗮𝗻𝗷𝗮𝗻𝗴\n│  ╰➤ {_pick(_CTITIT_LEVELS, level)}\n"
+        f"├ 😈 𝗕𝗲𝗻𝘁𝘂𝗸\n│  ╰➤ {_pick(_CTITIT_SHAPES, indices[1])}\n"
+        f"├ 💖 𝗞𝗲𝗯𝗲𝗿𝘀𝗶𝗵𝗮𝗻\n│  ╰➤ {_pick(_CTITIT_CLEANLINESS, indices[2])}\n"
+        f"├ ⭐ 𝗞𝗲𝘂𝗻𝗴𝗴𝘂𝗹𝗮𝗻\n│  ╰➤ {_pick(_CTITIT_ADVANTAGES, indices[3])}\n"
+        f"├ 🔞 𝗧𝗶𝗲𝗿\n│  ╰➤ {_pick(_CTITIT_TIERS, indices[4])}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -163,18 +160,15 @@ def _cmeki_report(user: User) -> str:
     indices = _stable_indices(user.id, "cmeki")
     level = indices[0]
     return (
-        "🔞 CEK MEMEK — REPORT 🔞\n"
-        "━━━━━━ ★ ━━━━━━\n\n"
-        f"👤 Target: `{_display_name(user)}`\n"
-        f"🔑 ID: `{user.id}`\n\n"
-        "📊 Rating Memek\n"
-        f"{_progress(_CMEKI_PERCENTAGES[level])}\n\n"
-        f"🔖 UKURAN LOBANG: {_pick(_CMEKI_LEVELS, level)}\n\n"
-        f"💖 KEBERSIHAN: {_pick(_CMEKI_CLEANLINESS, indices[1])}\n\n"
-        f"⭐ KELEBIHAN: {_pick(_CMEKI_ADVANTAGES, indices[2])}\n\n"
-        f"😶 TIER: {_pick(_CMEKI_TIERS, indices[3])}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        "⨱ IBEKS UBOT ⨱"
+        "╭─「 🔞 𝗖𝗘𝗞 𝗠𝗘𝗠𝗘𝗞 」\n│\n"
+        f"├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{_display_name(user)}`\n"
+        f"├ 🆔 𝗜𝗗\n│  ╰➤ `{user.id}`\n"
+        f"├ 📊 𝗥𝗮𝘁𝗶𝗻𝗴 𝗠𝗲𝗺𝗲𝗸\n│  ╰➤ {_progress(_CMEKI_PERCENTAGES[level])}\n"
+        f"├ 🔖 𝗨𝗸𝘂𝗿𝗮𝗻 𝗟𝗼𝗯𝗮𝗻𝗴\n│  ╰➤ {_pick(_CMEKI_LEVELS, level)}\n"
+        f"├ 💖 𝗞𝗲𝗯𝗲𝗿𝘀𝗶𝗵𝗮𝗻\n│  ╰➤ {_pick(_CMEKI_CLEANLINESS, indices[1])}\n"
+        f"├ ⭐ 𝗞𝗲𝗹𝗲𝗯𝗶𝗵𝗮𝗻\n│  ╰➤ {_pick(_CMEKI_ADVANTAGES, indices[2])}\n"
+        f"├ 😶 𝗧𝗶𝗲𝗿\n│  ╰➤ {_pick(_CMEKI_TIERS, indices[3])}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -183,7 +177,7 @@ def setup(client):
 
     async def _get_reply_target(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await send_ui(client, message.chat.id, "😡 REPLY DULU NYET...", expandable=True)
+            await send_ui(client, message.chat.id, "╭─「 😡 𝗖𝗘𝗞 𝗙𝗨𝗡 」\n│\n├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ Reply dulu ke user.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return None
         return message.reply_to_message.from_user
 

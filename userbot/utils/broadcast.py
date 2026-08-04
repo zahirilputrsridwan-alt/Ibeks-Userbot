@@ -134,17 +134,14 @@ async def broadcast_ucast(
 
 
 def format_broadcast_result(broadcast_type: str, result: dict) -> str:
-    """Format hasil broadcast sesuai template yang diminta."""
+    """Format hasil broadcast dengan field hasil yang nyata."""
     label = broadcast_type.upper()
     return (
-        f"✅ {label} SUCCESS\n"
-        f"✅ {label} SUCCESS\n"
-        f"━━━━━━ ★ ━━━━━━\n"
-        f"✅ Success : {result['success']}\n"
-        f"❌ Failed : {result['failed']}\n"
-        f"📊 Total : {result['total']}\n"
-        f"🤖 Type : {broadcast_type.upper()}\n"
-        f"📎 Task ID : {result['task_id']}\n"
-        f"━━━━━━ ★ ━━━━━━\n"
-        f"⨱ IBEKS UBOT ⨱"
+        f"╭─「 ✅ 𝗕𝗥𝗢𝗔𝗗𝗖𝗔𝗦𝗧 {label} 」\n│\n"
+        f"├ ✅ 𝗦𝘂𝗰𝗰𝗲𝘀𝘀\n│  ╰➤ {result['success']}\n"
+        f"├ ❌ 𝗙𝗮𝗶𝗹𝗲𝗱\n│  ╰➤ {result['failed']}\n"
+        f"├ 📊 𝗧𝗼𝘁𝗮𝗹\n│  ╰➤ {result['total']}\n"
+        f"├ 🤖 𝗧𝘆𝗽𝗲\n│  ╰➤ {label}\n"
+        f"├ 📎 𝗧𝗮𝘀𝗸 𝗜𝗗\n│  ╰➤ {result['task_id']}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )

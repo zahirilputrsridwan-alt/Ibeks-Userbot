@@ -27,28 +27,28 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ 💬 𝗖𝗵𝗮𝘁\n│  ╰➤ Perintah ini hanya bisa digunakan di grup.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_delete_messages")
         if not ok:
-            await send_ui(client, chat.id, err, "PURGE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ 🔐 𝗛𝗮𝗸 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ {err}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         if not message.reply_to_message:
-            await send_ui(client, chat.id, "❌ Reply ke pesan paling awal yang ingin dihapus.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ 💬 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Reply ke pesan paling awal yang ingin dihapus.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         start_id = message.reply_to_message.id
         end_id = message.id
         if start_id > end_id:
-            await send_ui(client, chat.id, "❌ Rentang pesan tidak valid.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ 📏 𝗥𝗲𝗻𝘁𝗮𝗻𝗴\n│  ╰➤ Pesan tidak valid.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         try:
             message_ids = list(range(start_id, end_id + 1))
             await client.delete_messages(chat.id, message_ids)
-            await send_ui(client, chat.id, f"✅ Berhasil menghapus {len(message_ids)} pesan.", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ✅ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ 🗑 𝗝𝘂𝗺𝗹𝗮𝗵\n│  ╰➤ {len(message_ids)} pesan berhasil dihapus.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
         except Exception as exc:
             log.exception(f"[Admin:Purge] Gagal purge pesan: {exc}")
-            await send_ui(client, chat.id, admin_error_message(exc), "PURGE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗣𝗨𝗥𝗚𝗘 」\n│\n├ ⚠️ 𝗘𝗿𝗿𝗼𝗿\n│  ╰➤ {admin_error_message(exc)}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")

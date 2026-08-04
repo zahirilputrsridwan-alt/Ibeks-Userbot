@@ -26,7 +26,13 @@ def _telegram_error(exc: Exception) -> str:
 
 async def _notify(client, chat_id: int, text: str) -> None:
     try:
-        await send_ui(client, chat_id, text, expandable=True)
+        await send_ui(
+            client,
+            chat_id,
+            "╭─「 ♻️ 𝗥𝗘𝗦𝗧𝗢𝗥𝗘 」\n│\n"
+            f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {text}\n"
+            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+        )
     except Exception as exc:
         log.exception("[Restore] Gagal mengirim status ke chat %s: %s", chat_id, exc)
 

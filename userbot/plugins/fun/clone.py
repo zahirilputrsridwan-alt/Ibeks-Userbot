@@ -126,7 +126,13 @@ def _telegram_error(exc: Exception) -> str:
 async def _notify(client, chat_id: int, text: str) -> None:
     """Kirim status tanpa membiarkan error jaringan mematikan handler."""
     try:
-        await send_ui(client, chat_id, text, expandable=True)
+        await send_ui(
+            client,
+            chat_id,
+            "╭─「 🧬 𝗖𝗟𝗢𝗡𝗘 」\n│\n"
+            f"├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ {text}\n"
+            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+        )
     except Exception as exc:
         log.exception("[Clone] Gagal mengirim status ke chat %s: %s", chat_id, exc)
 

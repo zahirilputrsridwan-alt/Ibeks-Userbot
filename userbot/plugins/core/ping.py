@@ -35,7 +35,14 @@ def setup(client):
 
         # Ukur ping lokal (waktu kirim pesan "loading")
         t_start = time.monotonic()
-        sent = await send_ui(client, chat_id, "🏓 Mengukur ping...", expandable=True)
+        sent = await send_ui(
+            client,
+            chat_id,
+            "╭─「 🏓 𝗣𝗜𝗡𝗚 」\n│\n"
+            "├ ⏱ 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Mengukur ping...\n"
+            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            expandable=True,
+        )
         ping_ms = round((time.monotonic() - t_start) * 1000, 2)
 
         # Ukur API ping via get_me()

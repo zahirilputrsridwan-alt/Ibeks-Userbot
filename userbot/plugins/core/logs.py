@@ -27,7 +27,13 @@ def setup(client):
         log_file = os.path.join(LOGS_DIR, "ibeks.log")
 
         if not os.path.exists(log_file) or os.path.getsize(log_file) == 0:
-            await send_ui(client, chat_id, "Tidak ada log.", title="LOG", emoji="⚠️")
+            await send_ui(
+                client,
+                chat_id,
+                "╭─「 ⚠️ 𝗟𝗢𝗚 」\n│\n"
+                "├ 📄 𝗙𝗶𝗹𝗲\n│  ╰➤ Tidak ada log.\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+            )
             return
 
         try:
@@ -42,7 +48,7 @@ def setup(client):
             await send_ui(
                 client,
                 chat_id,
-                "Gagal mengirim file log.",
-                title="LOG",
-                emoji="❌",
+                "╭─「 ❌ 𝗟𝗢𝗚 」\n│\n"
+                "├ 📄 𝗙𝗶𝗹𝗲\n│  ╰➤ Gagal mengirim file log.\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
             )

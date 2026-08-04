@@ -128,18 +128,15 @@ def _report_cnenen(user: User) -> str:
     l_variant = values[1] == 0 and level == 5
     index = 5 if l_variant else level - 1
     return (
-        "🔞 CEK NENEN — REPORT 🔞\n"
-        "━━━━━━ ★ ━━━━━━\n\n"
-        f"👤 Target : `{_name(user)}`\n"
-        f"🆔 ID : `{user.id}`\n\n"
-        "📊 Level Ketampanan\n"
-        f"{_progress(percent)}\n\n"
-        f"🔖 Ukuran: {_pick(_CNENEN_SIZE, index)}\n\n"
-        f"💖 Bentuk: {_pick(_CNENEN_SHAPE, index)}\n\n"
-        f"✨ Keindahan: {_pick(_CNENEN_BEAUTY, index)}\n\n"
-        f"👑 Tier: {_pick(_CNENEN_TIER, index)}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        "⨱ IBEKS UBOT ⨱"
+        "╭─「 🔞 𝗖𝗘𝗞 𝗡𝗘𝗡𝗘𝗡 」\n│\n"
+        f"├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{_name(user)}`\n"
+        f"├ 🆔 𝗜𝗗\n│  ╰➤ `{user.id}`\n"
+        f"├ 📊 𝗟𝗲𝘃𝗲𝗹 𝗞𝗲𝘁𝗮𝗺𝗽𝗮𝗻𝗮𝗻\n│  ╰➤ {_progress(percent)}\n"
+        f"├ 🔖 𝗨𝗸𝘂𝗿𝗮𝗻\n│  ╰➤ {_pick(_CNENEN_SIZE, index)}\n"
+        f"├ 💖 𝗕𝗲𝗻𝘁𝘂𝗸\n│  ╰➤ {_pick(_CNENEN_SHAPE, index)}\n"
+        f"├ ✨ 𝗞𝗲𝗶𝗻𝗱𝗮𝗵𝗮𝗻\n│  ╰➤ {_pick(_CNENEN_BEAUTY, index)}\n"
+        f"├ 👑 𝗧𝗶𝗲𝗿\n│  ╰➤ {_pick(_CNENEN_TIER, index)}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -148,18 +145,15 @@ def _report_cange(user: User) -> str:
     level = values[0] + 1
     percent = (16, 33, 50, 66, 83, 100)[level - 1]
     return (
-        "🔞 CEK SANGE — REPORT 🔞\n"
-        "━━━━━━ ★ ━━━━━━\n\n"
-        f"👤 Target: `{_name(user)}`\n"
-        f"🔑 ID: `{user.id}`\n\n"
-        "📊 Level Sange\n"
-        f"{_progress(percent)}\n\n"
-        f"🔥 AURA: {_pick(_CANGE_AURA, values[1])}\n\n"
-        f"💣 MODUS: {_pick(_CANGE_MODUS, values[2])}\n\n"
-        f"💖 KEUNGGULAN: {_pick(_CANGE_ADVANTAGE, values[3])}\n\n"
-        f"😈 TIER: {_pick(_CANGE_TIER, values[4])}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        "⨱ IBEKS UBOT ⨱"
+        "╭─「 🔞 𝗖𝗘𝗞 𝗦𝗔𝗡𝗚𝗘 」\n│\n"
+        f"├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{_name(user)}`\n"
+        f"├ 🆔 𝗜𝗗\n│  ╰➤ `{user.id}`\n"
+        f"├ 📊 𝗟𝗲𝘃𝗲𝗹 𝗦𝗮𝗻𝗴𝗲\n│  ╰➤ {_progress(percent)}\n"
+        f"├ 🔥 𝗔𝘂𝗿𝗮\n│  ╰➤ {_pick(_CANGE_AURA, values[1])}\n"
+        f"├ 💣 𝗠𝗼𝗱𝘂𝘀\n│  ╰➤ {_pick(_CANGE_MODUS, values[2])}\n"
+        f"├ 💖 𝗞𝗲𝘂𝗻𝗴𝗴𝘂𝗹𝗮𝗻\n│  ╰➤ {_pick(_CANGE_ADVANTAGE, values[3])}\n"
+        f"├ 😈 𝗧𝗶𝗲𝗿\n│  ╰➤ {_pick(_CANGE_TIER, values[4])}\n"
+        "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
 
 
@@ -168,7 +162,7 @@ def setup(client):
 
     async def _target_or_prompt(message):
         if not message.reply_to_message or not message.reply_to_message.from_user:
-            await send_ui(client, message.chat.id, "😡 REPLY DULU NYET...", expandable=True)
+            await send_ui(client, message.chat.id, "╭─「 😡 𝗖𝗘𝗞 𝗙𝗨𝗡 」\n│\n├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ Reply dulu ke user.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return None
         return message.reply_to_message.from_user
 

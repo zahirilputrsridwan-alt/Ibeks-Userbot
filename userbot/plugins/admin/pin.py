@@ -26,16 +26,16 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗣𝗜𝗡 」\n│\n├ 💬 𝗖𝗵𝗮𝘁\n│  ╰➤ Perintah ini hanya bisa digunakan di grup.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_pin_messages")
         if not ok:
-            await send_ui(client, chat.id, err, "PIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗣𝗜𝗡 」\n│\n├ 🔐 𝗛𝗮𝗸 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ {err}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         if not message.reply_to_message:
-            await send_ui(client, chat.id, "❌ Reply ke pesan yang ingin dipin.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗣𝗜𝗡 」\n│\n├ 💬 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Reply ke pesan yang ingin dipin.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         try:
@@ -44,7 +44,7 @@ def setup(client):
                 message.reply_to_message.id,
                 disable_notification=False,
             )
-            await send_ui(client, chat.id, "✅ Pesan berhasil dipin.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ✅ 𝗣𝗜𝗡 」\n│\n├ 💬 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Berhasil dipin.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
         except Exception as exc:
             log.exception(f"[Admin:Pin] Gagal pin pesan: {exc}")
-            await send_ui(client, chat.id, admin_error_message(exc), "PIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗣𝗜𝗡 」\n│\n├ ⚠️ 𝗘𝗿𝗿𝗼𝗿\n│  ╰➤ {admin_error_message(exc)}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")

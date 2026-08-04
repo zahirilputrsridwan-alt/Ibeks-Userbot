@@ -35,11 +35,13 @@ def setup(client):
         pyrogram_ver = pyrogram.__version__
 
         text = (
-            f"🟢 **{BOT_NAME}**\n\n"
-            f"**Status**   : `Online`\n"
-            f"**Version**  : `{VERSION}`\n"
-            f"**Python**   : `{python_ver}`\n"
-            f"**Pyrogram** : `{pyrogram_ver}`\n"
-            f"**Owner**    : `{owner}`"
+            f"╭─「 🟢 𝗔𝗟𝗜𝗩𝗘 」\n│\n"
+            f"├ 🤖 𝗕𝗼𝘁\n│  ╰➤ `{BOT_NAME}`\n"
+            "├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ `Online`\n"
+            f"├ 📦 𝗩𝗲𝗿𝘀𝗶\n│  ╰➤ `{VERSION}`\n"
+            f"├ 🐍 𝗣𝘆𝘁𝗵𝗼𝗻\n│  ╰➤ `{python_ver}`\n"
+            f"├ ⚙️ 𝗣𝘆𝗿𝗼𝗴𝗿𝗮𝗺\n│  ╰➤ `{pyrogram_ver}`\n"
+            f"├ 👤 𝗢𝘄𝗻𝗲𝗿\n│  ╰➤ `{owner}`\n"
+            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
         )
         await send_ui(client, message.chat.id, text, expandable=True)

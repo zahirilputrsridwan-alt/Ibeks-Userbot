@@ -10,7 +10,6 @@ from pyrogram import filters
 
 from config import AUTO_DELETE_CMD
 from utils.autodelete import auto_delete
-from utils.formatter import format_status
 from utils.filters import dynamic_command
 from utils.prefix_manager import set_prefix, is_valid_prefix
 from plugins.utils.ui import send_ui
@@ -33,7 +32,9 @@ def setup(client):
             await send_ui(
                 client,
                 chat_id,
-                format_status(False, "Gunakan: `.setprefix <prefix>`"),
+                "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
+                "├ 📝 𝗙𝗼𝗿𝗺𝗮𝘁\n│  ╰➤ Gunakan: `.setprefix <prefix>`\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
                 expandable=True,
             )
             return
@@ -43,7 +44,9 @@ def setup(client):
             await send_ui(
                 client,
                 chat_id,
-                format_status(False, "Prefix tidak valid. Maksimal 4 karakter non-spasi."),
+                "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
+                "├ 📝 𝗣𝗿𝗲𝗳𝗶𝘅\n│  ╰➤ Tidak valid. Maksimal 4 karakter non-spasi.\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
                 expandable=True,
             )
             return
@@ -52,6 +55,10 @@ def setup(client):
         await send_ui(
             client,
             chat_id,
-            format_status(True, f"Prefix berhasil diubah menjadi `{new_prefix}`"),
+            (
+                "╭─「 ✅ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
+                f"├ 📝 𝗣𝗿𝗲𝗳𝗶𝘅\n│  ╰➤ Berhasil diubah menjadi `{new_prefix}`\n"
+                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+            ),
             expandable=True,
         )

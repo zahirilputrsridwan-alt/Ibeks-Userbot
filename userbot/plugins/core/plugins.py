@@ -34,23 +34,18 @@ def _format_plugin_status() -> str:
     stats = get_plugin_stats()
     counts = _category_counts(stats)
     lines = [
-        f"📦 {BOT_NAME}",
-        "",
-        "━━━━━━━━━━━━━━━━━━━━",
-        "",
-        f"📊 Total Plugin : {len(stats['loaded'])}",
-        "",
+        f"╭─「 📦 𝗣𝗟𝗨𝗚𝗜𝗡 𝗦𝗧𝗔𝗧𝗨𝗦 」",
+        "│",
+        f"├ 🤖 𝗕𝗼𝘁\n│  ╰➤ {BOT_NAME}",
+        f"├ 📊 𝗧𝗼𝘁𝗮𝗹 𝗣𝗹𝘂𝗴𝗶𝗻\n│  ╰➤ {len(stats['loaded'])}",
     ]
     for category, count in counts.items():
-        lines.append(f"📂 {category} : {count}")
+        lines.append(f"├ 📂 𝗖𝗮𝘁𝗲𝗴𝗼𝗿𝘆 {category}\n│  ╰➤ {count}")
     lines.extend(
         [
-            "",
-            "━━━━━━━━━━━━━━━━━━━━",
-            "",
-            "Version : 1.0",
-            "",
-            "━━━━━━━━━━━━━━━━━━━━",
+            "├ 📦 𝗩𝗲𝗿𝘀𝗶\n│  ╰➤ 1.0",
+            "│",
+            "╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
         ]
     )
     return "\n".join(lines)

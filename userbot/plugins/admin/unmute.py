@@ -29,17 +29,17 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗨𝗡𝗠𝗨𝗧𝗘 」\n│\n├ 💬 𝗖𝗵𝗮𝘁\n│  ╰➤ Perintah ini hanya bisa digunakan di grup.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_restrict_members")
         if not ok:
-            await send_ui(client, chat.id, err, "UNMUTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗨𝗡𝗠𝗨𝗧𝗘 」\n│\n├ 🔐 𝗛𝗮𝗸 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ {err}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         target_id = await get_target_user(client, message)
         if not target_id:
-            await send_ui(client, chat.id, "❌ Target tidak ditemukan. Reply ke pesan user atau berikan username/ID.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗨𝗡𝗠𝗨𝗧𝗘 」\n│\n├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ Tidak ditemukan. Reply ke pesan user atau berikan username/ID.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         permissions = ChatPermissions(
@@ -60,7 +60,7 @@ def setup(client):
                 permissions,
                 until_date=datetime.now(timezone.utc),
             )
-            await send_ui(client, chat.id, "✅ User berhasil diunmute.", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ✅ 𝗨𝗡𝗠𝗨𝗧𝗘 」\n│\n├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{target_id}`\n├ 📌 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Berhasil diunmute.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
         except Exception as exc:
             log.exception(f"[Admin:Unmute] Gagal unmute user {target_id}: {exc}")
-            await send_ui(client, chat.id, admin_error_message(exc), "UNMUTE", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗨𝗡𝗠𝗨𝗧𝗘 」\n│\n├ 👤 𝗧𝗮𝗿𝗴𝗲𝘁\n│  ╰➤ `{target_id}`\n├ ⚠️ 𝗘𝗿𝗿𝗼𝗿\n│  ╰➤ {admin_error_message(exc)}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")

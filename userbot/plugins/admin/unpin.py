@@ -26,21 +26,21 @@ def setup(client):
         chat = message.chat
 
         if not is_group(chat):
-            await send_ui(client, chat.id, "❌ Perintah ini hanya bisa digunakan di grup.", expandable=True)
+            await send_ui(client, chat.id, "╭─「 ❌ 𝗨𝗡𝗣𝗜𝗡 」\n│\n├ 💬 𝗖𝗵𝗮𝘁\n│  ╰➤ Perintah ini hanya bisa digunakan di grup.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         ok, err = await check_userbot_rights(client, chat.id, "can_pin_messages")
         if not ok:
-            await send_ui(client, chat.id, err, "UNPIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗨𝗡𝗣𝗜𝗡 」\n│\n├ 🔐 𝗛𝗮𝗸 𝗔𝗸𝘀𝗲𝘀\n│  ╰➤ {err}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             return
 
         try:
             if message.reply_to_message:
                 await client.unpin_chat_message(chat.id, message.reply_to_message.id)
-                await send_ui(client, chat.id, "✅ Pesan berhasil diunpin.", expandable=True)
+                await send_ui(client, chat.id, "╭─「 ✅ 𝗨𝗡𝗣𝗜𝗡 」\n│\n├ 💬 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Berhasil diunpin.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
             else:
                 await client.unpin_all_chat_messages(chat.id)
-                await send_ui(client, chat.id, "✅ Semua pin berhasil dilepas.", expandable=True)
+                await send_ui(client, chat.id, "╭─「 ✅ 𝗨𝗡𝗣𝗜𝗡 」\n│\n├ 💬 𝗣𝗶𝗻\n│  ╰➤ Semua pin berhasil dilepas.\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
         except Exception as exc:
             log.exception(f"[Admin:Unpin] Gagal unpin pesan: {exc}")
-            await send_ui(client, chat.id, admin_error_message(exc), "UNPIN", "ADMIN", "ERROR", expandable=True)
+            await send_ui(client, chat.id, f"╭─「 ❌ 𝗨𝗡𝗣𝗜𝗡 」\n│\n├ ⚠️ 𝗘𝗿𝗿𝗼𝗿\n│  ╰➤ {admin_error_message(exc)}\n│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱")
