@@ -35,7 +35,6 @@ def setup(client):
                 "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
                 "├ 📝 𝗙𝗼𝗿𝗺𝗮𝘁\n│  ╰➤ Gunakan: `.setprefix <prefix>`\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-                expandable=True,
             )
             return
 
@@ -47,7 +46,6 @@ def setup(client):
                 "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
                 "├ 📝 𝗣𝗿𝗲𝗳𝗶𝘅\n│  ╰➤ Tidak valid. Maksimal 4 karakter non-spasi.\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-                expandable=True,
             )
             return
 
@@ -60,5 +58,4 @@ def setup(client):
                 f"├ 📝 𝗣𝗿𝗲𝗳𝗶𝘅\n│  ╰➤ Berhasil diubah menjadi `{new_prefix}`\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
             ),
-            expandable=True,
         )

@@ -39,6 +39,5 @@ def setup(client):
                 f"├ 🌐 𝗗𝗖 𝗜𝗗\n│  ╰➤ `{dc_id}`\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
             ),
-            expandable=True,
             disable_web_page_preview=True,
         )

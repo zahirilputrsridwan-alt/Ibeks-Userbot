@@ -37,11 +37,11 @@ Text UI must not generate generic labels, fallback fields, or inferred headings.
 
 **How to apply:** Preserve the request until `client.is_connected` is true, then use `user_id` only for the bot-self target; normal user/group chats continue using their original `chat_id`.
 
-**Expandable report status:** The rejected expandable-blockquote prototype was removed; report plugins remain on the stable plain-text `send_ui` path.
+**Expandable report status:** Text-only long reports may now opt into HTML `<blockquote expandable>` through the shared sender, with the footer outside the blockquote.
 
-**Why:** Telegram Android rendered the submitted `messageEntityBlockquote` as plain text, so keeping the unused raw-MTProto helper would add complexity without usable UI.
+**Why:** The requested UI is now explicitly limited to long text output and requires HTML parse mode; the existing media, animation, Voice Chat, and interactive-panel exclusions remain.
 
-**How to apply:** Do not reintroduce or roll out expandable entities unless a future client-rendered proof is independently confirmed.
+**How to apply:** Keep expandable output opt-in. Use `ParseMode.HTML` only for selected long-text sends/edits, escape dynamic values, and never apply it to media, animations, Voice Chat, clone/card, or inline-keyboard flows.
 
 **Scope rule:** The shared UI System is limited to ordinary text-only plugin output. Restore direct message sending for media, animation, Voice Chat, and inline/keyboard panel flows.
 

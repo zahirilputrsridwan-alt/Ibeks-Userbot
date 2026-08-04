@@ -45,7 +45,6 @@ def setup(client):
                         "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Gunakan `.gcast <pesan>` atau reply pesan.\n"
                         "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
                     ),
-                    expandable=True,
                 )
                 return
             text = parts[1]
@@ -83,7 +82,6 @@ def setup(client):
                         "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Gunakan `.ucast <pesan>` atau reply pesan.\n"
                         "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
                     ),
-                    expandable=True,
                 )
                 return
             text = parts[1]

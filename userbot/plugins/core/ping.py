@@ -41,7 +41,6 @@ def setup(client):
             "╭─「 🏓 𝗣𝗜𝗡𝗚 」\n│\n"
             "├ ⏱ 𝗦𝘁𝗮𝘁𝘂𝘀\n│  ╰➤ Mengukur ping...\n"
             "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-            expandable=True,
         )
         ping_ms = round((time.monotonic() - t_start) * 1000, 2)
 
@@ -73,6 +72,6 @@ def setup(client):
             "╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
         )
         try:
-            await edit_ui(client, sent, text)
+            await edit_ui(client, sent, text, expandable=True)
         except Exception:
             pass

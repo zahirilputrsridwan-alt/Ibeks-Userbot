@@ -2,6 +2,28 @@
 
 from __future__ import annotations
 
+import html
+import re
+
+from pyrogram.enums import ParseMode
+
+
+_BOX_FOOTER = "⨱ IBEKS USERBOT ⨱"
+_LEGACY_FOOTER = re.compile(
+    r"\n?│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱\s*$"
+)
+_INLINE_CODE = re.compile(r"`([^`\n]+)`")
+
+
+def _expandable_html(body: str) -> str:
+    """Letakkan body di blockquote expandable dengan footer di luar."""
+    text = str(body or "").strip()
+    text = _LEGACY_FOOTER.sub("", text).strip()
+    text = html.escape(text, quote=False)
+    text = _INLINE_CODE.sub(r"<code>\1</code>", text)
+    return f"<blockquote expandable>\n{text}\n</blockquote>\n\n{_BOX_FOOTER}"
+
+
 async def send_ui(
     client,
     chat_id: int,
@@ -9,10 +31,13 @@ async def send_ui(
     title: str = "",
     category: str = "",
     status: str = "",
-    expandable: bool = True,
+    expandable: bool = False,
     **kwargs,
 ):
     """Kirim teks yang sudah dirakit langsung oleh plugin pemanggil."""
+    if expandable:
+        kwargs["parse_mode"] = ParseMode.HTML
+        body = _expandable_html(body)
     return await client.send_message(chat_id, str(body or "").strip(), **kwargs)
 
 
@@ -23,9 +48,13 @@ async def edit_ui(
     title: str = "",
     emoji: str = "📦",
     reply_markup=None,
+    expandable: bool = False,
     **kwargs,
 ):
     """Edit dengan teks yang sudah dirakit langsung oleh plugin pemanggil."""
+    if expandable:
+        kwargs["parse_mode"] = ParseMode.HTML
+        body = _expandable_html(body)
     return await client.edit_message_text(
         message.chat.id,
         message.id,
