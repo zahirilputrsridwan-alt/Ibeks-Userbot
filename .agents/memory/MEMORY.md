@@ -20,3 +20,4 @@
 - [Command auto-delete policy](command-auto-delete-policy.md) — preserve command history by default; use one central allowlist for exceptions.
 - [Voice Chat Manager panel](voice-chat-manager-panel.md) — keep Voice Chat status and controls private in Manager via runtime IPC.
 - [Utility lock and downloader](utility-lock-downloader.md) — keep chat locks in Userbot SQLite and restrict downloads to TikTok, Instagram, and accessible Telegram media.
+- [Python local dependency environment](python-local-dependency-environment.md) — when system site-packages are read-only, install workflow dependencies into the project .pythonlibs environment.
