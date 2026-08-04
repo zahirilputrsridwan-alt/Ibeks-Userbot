@@ -14,6 +14,7 @@ _LEGACY_FOOTER = re.compile(
 )
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
 _MIN_EXPANDABLE_LINES = 6
+_EXPANDABLE_SPACER = "<br>\u2063<br>\u2063"
 
 
 def _expandable_html(body: str) -> str:
@@ -26,7 +27,10 @@ def _expandable_html(body: str) -> str:
         text = "\n".join(lines)
     text = html.escape(text, quote=False)
     text = _INLINE_CODE.sub(r"<code>\1</code>", text)
-    return f"<blockquote expandable>\n{text}\n</blockquote>\n\n{_BOX_FOOTER}"
+    return (
+        f"<blockquote expandable>\n{text}\n{_EXPANDABLE_SPACER}"
+        f"\n</blockquote>\n\n<b>{_BOX_FOOTER}</b>"
+    )
 
 
 async def send_ui(

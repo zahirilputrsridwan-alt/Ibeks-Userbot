@@ -49,6 +49,12 @@ Text UI must not generate generic labels, fallback fields, or inferred headings.
 
 **How to apply:** Add padding only in the shared expandable formatter, never in plugin handlers or business output construction.
 
+**Spacer rule:** Add two HTML line spacers immediately before the closing tag, and keep the bold footer outside the blockquote.
+
+**Why:** Telegram clients can use rendered pixel height rather than source line count when deciding whether to show the collapse affordance.
+
+**How to apply:** Keep the spacers confined to the `expandable=True` formatter path; do not add them to plugin bodies or ordinary text sends.
+
 **Scope rule:** The shared UI System is limited to ordinary text-only plugin output. Restore direct message sending for media, animation, Voice Chat, and inline/keyboard panel flows.
 
 **Why:** Applying presentation wrappers to interactive or media flows changed their established behavior and made rollback/debugging harder without improving those interfaces.
