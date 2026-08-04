@@ -43,6 +43,12 @@ Text UI must not generate generic labels, fallback fields, or inferred headings.
 
 **How to apply:** Keep expandable output opt-in. Use `ParseMode.HTML` only for selected long-text sends/edits, escape dynamic values, and never apply it to media, animations, Voice Chat, clone/card, or inline-keyboard flows.
 
+**Minimum height:** Keep expandable content at least six lines tall; short reports receive visual `│` separator lines inside the blockquote.
+
+**Why:** Telegram may render a short expandable blockquote fully open instead of showing the collapse affordance.
+
+**How to apply:** Add padding only in the shared expandable formatter, never in plugin handlers or business output construction.
+
 **Scope rule:** The shared UI System is limited to ordinary text-only plugin output. Restore direct message sending for media, animation, Voice Chat, and inline/keyboard panel flows.
 
 **Why:** Applying presentation wrappers to interactive or media flows changed their established behavior and made rollback/debugging harder without improving those interfaces.

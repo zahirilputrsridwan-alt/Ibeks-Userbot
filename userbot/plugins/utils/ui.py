@@ -13,12 +13,17 @@ _LEGACY_FOOTER = re.compile(
     r"\n?│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱\s*$"
 )
 _INLINE_CODE = re.compile(r"`([^`\n]+)`")
+_MIN_EXPANDABLE_LINES = 6
 
 
 def _expandable_html(body: str) -> str:
     """Letakkan body di blockquote expandable dengan footer di luar."""
     text = str(body or "").strip()
     text = _LEGACY_FOOTER.sub("", text).strip()
+    lines = text.splitlines()
+    if len(lines) < _MIN_EXPANDABLE_LINES:
+        lines.extend("│" for _ in range(_MIN_EXPANDABLE_LINES - len(lines)))
+        text = "\n".join(lines)
     text = html.escape(text, quote=False)
     text = _INLINE_CODE.sub(r"<code>\1</code>", text)
     return f"<blockquote expandable>\n{text}\n</blockquote>\n\n{_BOX_FOOTER}"
