@@ -107,18 +107,28 @@ async def broadcast_ucast(
     source_message: Optional[Message] = None,
 ) -> dict:
     """
-    Broadcast pesan ke semua chat pribadi (private).
-    Return dict {'success', 'failed', 'total', 'task_id'}.
+    Broadcast pesan hanya ke private chat user.
+    Bot chat dan Saved Messages (chat dengan diri sendiri) selalu dilewati.
     """
     task_id = _generate_task_id()
     success = 0
     failed = 0
+    skipped = 0
+    me = await client.get_me()
 
     async for dialog in client.get_dialogs():
         chat = dialog.chat
         if chat.type != ChatType.PRIVATE:
+            skipped += 1
+            continue
+        if chat.id == me.id or getattr(chat, "is_self", False):
+            skipped += 1
+            continue
+        if getattr(chat, "is_bot", False):
+            skipped += 1
             continue
         if is_blacklisted(chat.id):
+            skipped += 1
             continue
 
         if await _send_message_to_chat(client, chat.id, text, source_message):
@@ -132,6 +142,7 @@ async def broadcast_ucast(
     return {
         "success": success,
         "failed": failed,
+        "skipped": skipped,
         "total": total,
         "task_id": task_id,
     }
@@ -157,6 +168,17 @@ def format_gcast_result(result: dict) -> str:
         "📢 GCAST REPORT\n\n"
         f"✅ Berhasil : {result['success']} Grup\n"
         f"❌ Gagal : {result['failed']} Grup\n"
+        f"⏭️ Dilewati : {result['skipped']} Chat\n\n"
+        "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+    )
+
+
+def format_ucast_result(result: dict) -> str:
+    """Format laporan UCAST dengan jumlah user berhasil, gagal, dan dilewati."""
+    return (
+        "📨 UCAST REPORT\n\n"
+        f"✅ Berhasil : {result['success']} User\n\n"
+        f"❌ Gagal : {result['failed']} User\n\n"
         f"⏭️ Dilewati : {result['skipped']} Chat\n\n"
         "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )

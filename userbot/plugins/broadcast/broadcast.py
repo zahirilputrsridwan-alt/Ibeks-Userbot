@@ -21,6 +21,7 @@ from utils.broadcast import (
     broadcast_ucast,
     format_broadcast_result,
     format_gcast_result,
+    format_ucast_result,
 )
 from plugins.utils.ui import send_ui
 
@@ -84,7 +85,7 @@ def setup(client):
                     chat_id,
                     (
                         "╭─「 ❌ 𝗨𝗖𝗔𝗦𝗧 」\n│\n"
-                        "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Gunakan `.ucast <pesan>` atau reply pesan.\n"
+                        "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ ❌ Masukkan pesan atau reply ke sebuah pesan.\n"
                         "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
                     ),
                 )
@@ -100,7 +101,7 @@ def setup(client):
             "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
         )
         result = await broadcast_ucast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("ucast", result), expandable=True)
+        await send_ui(client, chat_id, format_ucast_result(result), expandable=True)
 
     @client.on_message(dynamic_command("addbl") & filters.me)
     async def cmd_addbl(client, message):
