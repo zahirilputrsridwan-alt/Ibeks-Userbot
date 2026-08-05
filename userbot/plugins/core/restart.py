@@ -4,16 +4,14 @@ Command: .restart
 Merestart userbot dan mengirim notifikasi setelah hidup kembali.
 """
 
-import asyncio
 import os
 import sys
 
 from pyrogram import filters
 
-from config import AUTO_DELETE_CMD, MAIN_FILE, RESTART_STATE_FILE
-from utils.autodelete import auto_delete
+from config import MAIN_FILE, RESTART_STATE_FILE
 from utils.filters import dynamic_command
-from plugins.utils.ui import send_ui
+from utils.logger import log
 
 
 def setup(client):
@@ -22,35 +20,16 @@ def setup(client):
     @client.on_message(dynamic_command("restart") & filters.me)
     async def cmd_restart(client, message):
         """Handler command .restart"""
-        chat_id = message.chat.id
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
-
-        # Simpan chat_id agar bot bisa mengirim pesan setelah restart
+        # Hanya simpan marker. Main akan mengirim notifikasi ke Bot Manager,
+        # bukan ke chat tempat command diketik (yang bisa saja berupa grup).
         try:
             with open(RESTART_STATE_FILE, "w", encoding="utf-8") as f:
-                f.write(str(chat_id))
+                f.write("1")
         except Exception as exc:
-            from utils.logger import log
             log.warning(f"[Restart] Gagal menyimpan state restart: {exc}")
-
-        await send_ui(
-            client,
-            chat_id,
-            "╭─「 🔄 𝗥𝗘𝗦𝗧𝗔𝗥𝗧 」\n│\n"
-            "├ 🤖 𝗨𝘀𝗲𝗿𝗯𝗼𝘁\n│  ╰➤ Sedang direstart...\n"
-            "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-        )
 
         # Ganti proses saat ini dengan instance baru dari main.py
         try:
             os.execv(sys.executable, [sys.executable, MAIN_FILE])
         except Exception as exc:
-            from utils.logger import log
             log.exception(f"[Restart] Gagal restart: {exc}")
-            await send_ui(
-                client,
-                chat_id,
-                "╭─「 ❌ 𝗥𝗘𝗦𝗧𝗔𝗥𝗧 」\n│\n"
-                "├ 🤖 𝗨𝘀𝗲𝗿𝗯𝗼𝘁\n│  ╰➤ Gagal direstart.\n"
-                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
-            )

@@ -21,3 +21,4 @@
 - [Voice Chat Manager panel](voice-chat-manager-panel.md) — keep Voice Chat status and controls private in Manager via runtime IPC.
 - [Utility lock and downloader](utility-lock-downloader.md) — keep chat locks in Userbot SQLite and restrict downloads to TikTok, Instagram, and accessible Telegram media.
 - [Python local dependency environment](python-local-dependency-environment.md) — when system site-packages are read-only, install workflow dependencies into the project .pythonlibs environment.
+- [Core system boundaries](core-system.md) — preserve dynamic prefixes, Manager-only restart notifications, and per-plugin error isolation.

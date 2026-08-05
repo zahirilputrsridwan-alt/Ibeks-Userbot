@@ -25,6 +25,7 @@ from config import (
     VERSION,
     CMD_PREFIX,
     MAIN_FILE,
+    MANAGER_BOT_ID,
     RESTART_STATE_FILE,
     RUNNER_READY_FILE,
 )
@@ -32,7 +33,7 @@ from db import init_db
 from loader import load_plugins, plugin_filename
 from utils.logger import log
 from utils.prefix_manager import set_owner_id, get_prefix
-from utils.error_handler import install_global_error_handler
+from utils.error_handler import install_client_error_handler, install_global_error_handler
 from utils.voice_manager import voice_manager
 from utils.voice_bridge import start_voice_bridge
 
@@ -67,8 +68,8 @@ def _read_restart_state() -> dict:
         return {}
     try:
         with open(RESTART_STATE_FILE, "r", encoding="utf-8") as f:
-            chat_id = f.read().strip()
-        return {"chat_id": int(chat_id)} if chat_id else {}
+            marker = f.read().strip()
+        return {"pending": bool(marker)} if marker else {}
     except Exception as exc:
         log.warning(f"[Main] Gagal membaca state restart: {exc}")
     return {}
@@ -98,6 +99,31 @@ def _mark_runner_ready() -> None:
             ready.write(str(os.getpid()))
     except Exception as exc:
         log.warning(f"[Main] Gagal menulis marker Runner: {exc}")
+
+
+def _send_restart_notification(client) -> None:
+    """Kirim notifikasi restart hanya ke private chat Bot Manager."""
+    if not MANAGER_BOT_ID:
+        log.warning(
+            "[Main] BOT_TOKEN Bot Manager tidak tersedia; "
+            "notifikasi restart tidak dapat dikirim."
+        )
+        return
+
+    try:
+        from pyrogram.enums import ChatType
+
+        manager_chat = client.get_chat(MANAGER_BOT_ID)
+        if manager_chat.type not in {ChatType.PRIVATE, ChatType.BOT}:
+            log.warning(
+                "[Main] Tujuan notifikasi restart bukan private/Bot chat; "
+                "pesan dibatalkan."
+            )
+            return
+        client.send_message(MANAGER_BOT_ID, "✅ Userbot berhasil direstart.")
+        log.info("[Main] Notifikasi restart dikirim ke Bot Manager.")
+    except Exception as exc:
+        log.warning(f"[Main] Gagal mengirim notifikasi restart: {exc}")
 
 
 def _userbot_access_decision(telegram_id: int) -> tuple[bool, str]:
@@ -183,6 +209,7 @@ def main() -> None:
 
     # ── Pasang global error handler agar error plugin tidak merusak bot ───────
     install_global_error_handler()
+    install_client_error_handler(client)
 
     # ── Muat semua plugin ke instance client ──────────────────────────────────
     plugin_stats = load_plugins(client)
@@ -230,10 +257,7 @@ def main() -> None:
         # Kirim notifikasi restart jika bot baru saja dihidupkan ulang
         restart_state = _read_restart_state()
         if restart_state:
-            try:
-                client.send_message(restart_state["chat_id"], "✅ Userbot berhasil direstart.")
-            except Exception as exc:
-                log.warning(f"[Main] Gagal mengirim pesan restart: {exc}")
+            _send_restart_notification(client)
             _clear_restart_state()
 
         idle()

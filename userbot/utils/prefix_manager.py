@@ -43,5 +43,5 @@ def set_prefix(prefix: str) -> None:
 
 
 def is_valid_prefix(prefix: str) -> bool:
-    """Validasi sederhana: prefix harus non-empty dan maksimal 4 karakter."""
-    return bool(prefix) and len(prefix) <= 4 and not prefix.isspace()
+    """Validasi prefix yang didukung IBEKS USERBOT."""
+    return prefix in {".", "/", "!", "?"}

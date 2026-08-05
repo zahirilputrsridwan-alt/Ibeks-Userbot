@@ -34,6 +34,7 @@ def setup(client):
                 chat_id,
                 "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
                 "├ 📝 𝗙𝗼𝗿𝗺𝗮𝘁\n│  ╰➤ Gunakan: `.setprefix <prefix>`\n"
+                "├ ✅ 𝗣𝗶𝗹𝗶𝗵𝗮𝗻\n│  ╰➤ `.`, `/`, `!`, atau `?`\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
             )
             return
@@ -45,6 +46,7 @@ def setup(client):
                 chat_id,
                 "╭─「 ❌ 𝗦𝗘𝗧𝗣𝗥𝗘𝗙𝗜𝗫 」\n│\n"
                 "├ 📝 𝗣𝗿𝗲𝗳𝗶𝘅\n│  ╰➤ Tidak valid. Maksimal 4 karakter non-spasi.\n"
+                "├ ✅ 𝗣𝗶𝗹𝗶𝗵𝗮𝗻\n│  ╰➤ Hanya `.`, `/`, `!`, atau `?`\n"
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
             )
             return

@@ -1,0 +1,159 @@
+Lanjutkan pengembangan IBEKS USERBOT.
+
+=================================================
+TAHAP 2
+CORE SYSTEM
+=================================================
+
+Jangan mengubah fitur yang sudah ada.
+
+Pertahankan:
+
+- Plugin Loader
+- SQLite
+- Login STRING_SESSION
+- .ping
+- .alive
+
+=================================================
+TUJUAN
+=================================================
+
+Menambahkan fitur inti yang benar-benar dibutuhkan oleh IBEKS USERBOT.
+
+=================================================
+FITUR BARU
+=================================================
+
+.id
+
+.restart
+
+.setprefix
+
+Global Error Handler
+
+=================================================
+.id
+=================================================
+
+Menampilkan informasi target.
+
+Jika tidak reply:
+
+Menampilkan informasi akun sendiri.
+
+Jika reply:
+
+Menampilkan informasi akun yang direply.
+
+Data:
+
+👤 Nama
+📛 Username
+🆔 User ID
+🤖 Bot/User
+💬 Chat ID
+
+Gunakan UI System IBEKS USERBOT.
+
+=================================================
+.restart
+=================================================
+
+Merestart Userbot.
+
+Setelah Userbot aktif kembali:
+
+Kirim notifikasi:
+
+✅ Userbot berhasil direstart.
+
+Notifikasi dikirim ke Bot Manager.
+
+Jangan mengirim ke grup.
+
+=================================================
+.setprefix
+=================================================
+
+Mengubah prefix command.
+
+Contoh:
+
+.setprefix /
+
+Output:
+
+✅ Prefix berhasil diubah menjadi /
+
+Prefix harus disimpan di SQLite.
+
+Saat Userbot restart:
+
+Prefix tetap tersimpan.
+
+Prefix yang diizinkan:
+
+.
+/
+!
+?
+
+Jika prefix tidak valid:
+
+Tampilkan pesan error.
+
+=================================================
+DATABASE
+=================================================
+
+Tambahkan tabel:
+
+settings
+
+Kolom:
+
+telegram_id
+
+prefix
+
+updated_at
+
+=================================================
+GLOBAL ERROR HANDLER
+=================================================
+
+Buat Global Error Handler.
+
+Jika salah satu plugin mengalami error:
+
+- Userbot tidak boleh crash.
+- Plugin lain tetap berjalan normal.
+- Error dicatat ke folder:
+
+logs/
+
+Format log:
+
+Tanggal
+Waktu
+Nama Plugin
+Nama Command
+Jenis Error
+Detail Error
+
+=================================================
+KUALITAS
+=================================================
+
+Pastikan:
+
+- Struktur project tetap modular.
+- Tidak mengubah Plugin Loader.
+- Tidak mengubah command lama.
+- Prefix dibaca dari database.
+- Error Handler berlaku untuk seluruh plugin.
+- Userbot tetap stabil walaupun satu plugin error.
+
+Jika selesai, berhenti dan tunggu instruksi tahap berikutnya.

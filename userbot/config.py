@@ -13,6 +13,19 @@ API_ID: int = int(os.environ.get("API_ID", 0))
 API_HASH: str = os.environ.get("API_HASH", "")
 STRING_SESSION: str = os.environ.get("STRING_SESSION", "")
 OWNER_ID: int = int(os.environ.get("OWNER_ID", 0) or 0)
+MANAGER_BOT_TOKEN: str = os.environ.get("BOT_TOKEN", "").strip()
+
+
+def _manager_bot_id_from_token(token: str) -> int:
+    """Ambil ID Bot Manager dari token tanpa pernah mencatat tokennya."""
+    try:
+        bot_id = int(token.split(":", 1)[0])
+    except (AttributeError, ValueError, IndexError):
+        return 0
+    return bot_id if bot_id > 0 else 0
+
+
+MANAGER_BOT_ID: int = _manager_bot_id_from_token(MANAGER_BOT_TOKEN)
 
 # ── Bot metadata ──────────────────────────────────────────────────────────────
 BOT_NAME: str = "IBEKS USERBOT"
