@@ -68,7 +68,6 @@ def setup(client):
 
     @client.on_message(dynamic_command("restore") & filters.me)
     async def cmd_restore(client, message):
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         chat_id = message.chat.id
         backup = _load_backup()
         if backup is None:
@@ -108,4 +107,22 @@ def setup(client):
         if errors:
             await _notify(client, chat_id, f"Profil dipulihkan sebagian. Alasan: {'; '.join(errors)}.")
             return
-        await _notify(client, chat_id, "Profil asli berhasil dipulihkan.")
+        success_text = (
+            "✅ RESTORE BERHASIL\n\n"
+            "Profil berhasil dikembalikan.\n\n"
+            "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+        )
+        try:
+            success_message = await send_ui(client, chat_id, success_text)
+        except Exception as exc:
+            log.exception("[Restore] Gagal mengirim pesan sukses: %s", exc)
+            success_message = None
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        if success_message is not None:
+            asyncio.create_task(
+                auto_delete(
+                    success_message,
+                    delay=AUTO_DELETE_CMD,
+                    force=True,
+                )
+            )

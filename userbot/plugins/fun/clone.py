@@ -142,7 +142,6 @@ def setup(client):
 
     @client.on_message(dynamic_command("clone") & filters.me)
     async def cmd_clone(client, message):
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
         chat_id = message.chat.id
 
         reply = message.reply_to_message
@@ -219,5 +218,26 @@ def setup(client):
             )
             return
 
-        suffix = "" if target.photo else " Foto target tidak tersedia, bagian foto dilewati."
-        await _notify(client, chat_id, f"✅ Berhasil meng-clone profil target.{suffix}")
+        target_name = " ".join(
+            part for part in (target.first_name, target.last_name) if part
+        ) or target.username or str(target.id)
+        success_text = (
+            "✅ CLONE BERHASIL\n\n"
+            f"👤 Target:\n{target_name}\n\n"
+            f"🆔 ID:\n{target.id}\n\n"
+            "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+        )
+        try:
+            success_message = await send_ui(client, chat_id, success_text)
+        except Exception as exc:
+            log.exception("[Clone] Gagal mengirim pesan sukses: %s", exc)
+            success_message = None
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
+        if success_message is not None:
+            asyncio.create_task(
+                auto_delete(
+                    success_message,
+                    delay=AUTO_DELETE_CMD,
+                    force=True,
+                )
+            )

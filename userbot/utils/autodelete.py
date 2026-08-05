@@ -17,7 +17,7 @@ from utils.prefix_manager import get_prefix
 
 # Command tanpa prefix yang pesan command-nya boleh dihapus otomatis.
 # Tambahkan/hapus nama command di sini; plugin tidak perlu diubah.
-AUTO_DELETE_COMMANDS = {"joinvc"}
+AUTO_DELETE_COMMANDS = {"clone", "joinvc", "restore"}
 
 
 def should_auto_delete(message: Any) -> bool:
@@ -34,7 +34,7 @@ def should_auto_delete(message: Any) -> bool:
     return any(command == f"{prefix}{name}" for name in AUTO_DELETE_COMMANDS)
 
 
-async def auto_delete(message, delay: int = 5) -> None:
+async def auto_delete(message, delay: int = 5, force: bool = False) -> None:
     """
     Hapus pesan command yang diizinkan setelah `delay` detik.
 
@@ -47,7 +47,7 @@ async def auto_delete(message, delay: int = 5) -> None:
     delay : int
         Jeda dalam detik sebelum pesan dihapus (default: 5).
     """
-    if not should_auto_delete(message):
+    if not force and not should_auto_delete(message):
         return
 
     await asyncio.sleep(delay)
