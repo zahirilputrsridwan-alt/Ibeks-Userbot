@@ -16,7 +16,12 @@ from config import AUTO_DELETE_CMD
 from db import add_blacklist, del_blacklist, is_blacklisted, list_blacklist
 from utils.autodelete import auto_delete
 from utils.filters import dynamic_command
-from utils.broadcast import broadcast_gcast, broadcast_ucast, format_broadcast_result
+from utils.broadcast import (
+    broadcast_gcast,
+    broadcast_ucast,
+    format_broadcast_result,
+    format_gcast_result,
+)
 from plugins.utils.ui import send_ui
 
 def setup(client):
@@ -42,7 +47,7 @@ def setup(client):
                     chat_id,
                     (
                         "╭─「 ❌ 𝗚𝗖𝗔𝗦𝗧 」\n│\n"
-                        "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ Gunakan `.gcast <pesan>` atau reply pesan.\n"
+                        "├ 📝 𝗣𝗲𝘀𝗮𝗻\n│  ╰➤ ❌ Masukkan pesan atau reply ke sebuah pesan.\n"
                         "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
                     ),
                 )
@@ -58,7 +63,7 @@ def setup(client):
             "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
         )
         result = await broadcast_gcast(client, text=text, source_message=source)
-        await send_ui(client, chat_id, format_broadcast_result("gcast", result), expandable=True)
+        await send_ui(client, chat_id, format_gcast_result(result), expandable=True)
 
     @client.on_message(dynamic_command("ucast") & filters.me)
     async def cmd_ucast(client, message):

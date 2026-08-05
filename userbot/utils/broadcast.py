@@ -67,18 +67,21 @@ async def broadcast_gcast(
     source_message: Optional[Message] = None,
 ) -> dict:
     """
-    Broadcast pesan ke semua grup/channel yang diikuti userbot.
-    Return dict {'success', 'failed', 'total', 'task_id'}.
+    Broadcast pesan hanya ke group dan supergroup.
+    Channel, private chat, dan bot chat selalu dilewati tanpa pengiriman.
     """
     task_id = _generate_task_id()
     success = 0
     failed = 0
+    skipped = 0
 
     async for dialog in client.get_dialogs():
         chat = dialog.chat
-        if chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP, ChatType.CHANNEL):
+        if chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP):
+            skipped += 1
             continue
         if is_blacklisted(chat.id):
+            skipped += 1
             continue
 
         if await _send_message_to_chat(client, chat.id, text, source_message):
@@ -92,6 +95,7 @@ async def broadcast_gcast(
     return {
         "success": success,
         "failed": failed,
+        "skipped": skipped,
         "total": total,
         "task_id": task_id,
     }
@@ -144,4 +148,15 @@ def format_broadcast_result(broadcast_type: str, result: dict) -> str:
         f"├ 🤖 𝗧𝘆𝗽𝗲\n│  ╰➤ {label}\n"
         f"├ 📎 𝗧𝗮𝘀𝗸 𝗜𝗗\n│  ╰➤ {result['task_id']}\n"
         "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
+    )
+
+
+def format_gcast_result(result: dict) -> str:
+    """Format laporan GCAST dengan jumlah grup berhasil, gagal, dan dilewati."""
+    return (
+        "📢 GCAST REPORT\n\n"
+        f"✅ Berhasil : {result['success']} Grup\n"
+        f"❌ Gagal : {result['failed']} Grup\n"
+        f"⏭️ Dilewati : {result['skipped']} Chat\n\n"
+        "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
     )
