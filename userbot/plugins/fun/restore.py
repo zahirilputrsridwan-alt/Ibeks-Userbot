@@ -63,49 +63,56 @@ async def _remove_current_photo(client) -> None:
     await client.delete_profile_photos(photo_id)
 
 
+async def restore_profile(client) -> tuple[bool, str]:
+    """Jalankan restore profil dan kembalikan status untuk pemanggil UI."""
+    backup = _load_backup()
+    if backup is None:
+        return False, "Backup profil tidak ditemukan."
+
+    errors = []
+    try:
+        await client.update_profile(
+            first_name=backup["first_name"],
+            last_name=backup["last_name"],
+            bio=backup["bio"],
+        )
+    except RPCError as exc:
+        errors.append(f"data profil ({_telegram_error(exc)})")
+        log.exception("[Restore] Telegram menolak data profil: %s", exc)
+    except Exception as exc:
+        errors.append(f"data profil ({_telegram_error(exc)})")
+        log.exception("[Restore] Gagal memulihkan data profil: %s", exc)
+
+    photo_file = backup.get("photo_file")
+    try:
+        if photo_file:
+            if not os.path.exists(BACKUP_PHOTO_PATH):
+                raise FileNotFoundError("file foto backup tidak ditemukan")
+            with open(BACKUP_PHOTO_PATH, "rb") as photo:
+                await client.set_profile_photo(photo=photo)
+        else:
+            await _remove_current_photo(client)
+    except RPCError as exc:
+        errors.append(f"foto ({_telegram_error(exc)})")
+        log.exception("[Restore] Telegram menolak foto backup: %s", exc)
+    except Exception as exc:
+        errors.append(f"foto ({_telegram_error(exc)})")
+        log.exception("[Restore] Gagal memulihkan foto backup: %s", exc)
+
+    if errors:
+        return False, f"Profil dipulihkan sebagian. Alasan: {'; '.join(errors)}."
+    return True, ""
+
+
 def setup(client):
     """Daftarkan command .restore."""
 
     @client.on_message(dynamic_command("restore") & filters.me)
     async def cmd_restore(client, message):
         chat_id = message.chat.id
-        backup = _load_backup()
-        if backup is None:
-            await _notify(client, chat_id, "❌ Backup profil tidak ditemukan.")
-            return
-
-        errors = []
-        try:
-            await client.update_profile(
-                first_name=backup["first_name"],
-                last_name=backup["last_name"],
-                bio=backup["bio"],
-            )
-        except RPCError as exc:
-            errors.append(f"data profil ({_telegram_error(exc)})")
-            log.exception("[Restore] Telegram menolak data profil: %s", exc)
-        except Exception as exc:
-            errors.append(f"data profil ({_telegram_error(exc)})")
-            log.exception("[Restore] Gagal memulihkan data profil: %s", exc)
-
-        photo_file = backup.get("photo_file")
-        try:
-            if photo_file:
-                if not os.path.exists(BACKUP_PHOTO_PATH):
-                    raise FileNotFoundError("file foto backup tidak ditemukan")
-                with open(BACKUP_PHOTO_PATH, "rb") as photo:
-                    await client.set_profile_photo(photo=photo)
-            else:
-                await _remove_current_photo(client)
-        except RPCError as exc:
-            errors.append(f"foto ({_telegram_error(exc)})")
-            log.exception("[Restore] Telegram menolak foto backup: %s", exc)
-        except Exception as exc:
-            errors.append(f"foto ({_telegram_error(exc)})")
-            log.exception("[Restore] Gagal memulihkan foto backup: %s", exc)
-
-        if errors:
-            await _notify(client, chat_id, f"Profil dipulihkan sebagian. Alasan: {'; '.join(errors)}.")
+        success, detail = await restore_profile(client)
+        if not success:
+            await _notify(client, chat_id, f"❌ {detail}")
             return
         success_text = (
             "✅ RESTORE BERHASIL\n\n"

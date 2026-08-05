@@ -17,6 +17,9 @@ USERBOT_RUNTIME_DIR = BASE_DIR / "userbot_runtime"
 VOICE_REQUEST_FILENAME = ".voice_request.json"
 VOICE_RESPONSE_FILENAME = ".voice_response.json"
 VOICE_ACTION_FILENAME = ".voice_action.json"
+CLONE_REQUEST_FILENAME = ".clone_request.json"
+CLONE_RESPONSE_FILENAME = ".clone_response.json"
+CLONE_ACTION_FILENAME = ".clone_action.json"
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 API_ID = int(os.environ.get("API_ID", "0") or 0)

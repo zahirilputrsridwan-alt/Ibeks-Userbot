@@ -15,6 +15,7 @@ from pyrogram.errors import RPCError
 
 from config import AUTO_DELETE_CMD, BASE_DIR
 from utils.autodelete import auto_delete
+from utils.clone_bridge import request_clone_panel
 from utils.filters import dynamic_command
 from utils.logger import log
 from plugins.utils.ui import send_ui
@@ -221,23 +222,14 @@ def setup(client):
         target_name = " ".join(
             part for part in (target.first_name, target.last_name) if part
         ) or target.username or str(target.id)
-        success_text = (
-            "✅ CLONE BERHASIL\n\n"
-            f"👤 Target:\n{target_name}\n\n"
-            f"🆔 ID:\n{target.id}\n\n"
-            "⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱"
-        )
         try:
-            success_message = await send_ui(client, chat_id, success_text)
-        except Exception as exc:
-            log.exception("[Clone] Gagal mengirim pesan sukses: %s", exc)
-            success_message = None
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
-        if success_message is not None:
-            asyncio.create_task(
-                auto_delete(
-                    success_message,
-                    delay=AUTO_DELETE_CMD,
-                    force=True,
-                )
+            me = await client.get_me()
+            request_clone_panel(
+                user_id=me.id,
+                target_name=target_name,
             )
+        except Exception as exc:
+            # Clone sudah berhasil; kegagalan IPC tidak boleh mengubah
+            # profil atau mengirim balasan ke grup.
+            log.exception("[Clone] Gagal mengirim panel Manager: %s", exc)
+        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))

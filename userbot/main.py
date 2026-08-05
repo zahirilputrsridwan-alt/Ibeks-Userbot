@@ -36,6 +36,7 @@ from utils.prefix_manager import set_owner_id, get_prefix
 from utils.error_handler import install_client_error_handler, install_global_error_handler
 from utils.voice_manager import voice_manager
 from utils.voice_bridge import start_voice_bridge
+from utils.clone_bridge import start_clone_bridge
 
 
 _TELEGRAM_BOT_TOKEN_RE = re.compile(r"\b\d{8,12}:[A-Za-z0-9_-]{30,}\b")
@@ -253,6 +254,7 @@ def main() -> None:
         log_startup_info(client, me, plugin_stats)
         _mark_runner_ready()
         start_voice_bridge(client)
+        start_clone_bridge(client)
 
         # Kirim notifikasi restart jika bot baru saja dihidupkan ulang
         restart_state = _read_restart_state()
