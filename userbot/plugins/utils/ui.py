@@ -41,13 +41,19 @@ async def send_ui(
     category: str = "",
     status: str = "",
     expandable: bool = False,
+    reply_markup=None,
     **kwargs,
 ):
     """Kirim teks yang sudah dirakit langsung oleh plugin pemanggil."""
     if expandable:
         kwargs["parse_mode"] = ParseMode.HTML
         body = _expandable_html(body)
-    return await client.send_message(chat_id, str(body or "").strip(), **kwargs)
+    return await client.send_message(
+        chat_id,
+        str(body or "").strip(),
+        reply_markup=reply_markup,
+        **kwargs,
+    )
 
 
 async def edit_ui(

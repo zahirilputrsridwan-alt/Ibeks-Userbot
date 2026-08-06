@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from plugins.utils.ui import edit_ui
 from utils.theme import emoji, render
 
 
 def keyboard(rows: list[list[tuple[str, str]]]) -> InlineKeyboardMarkup:
+    """Buat markup inline Pyrogram dari label dan callback data."""
     return InlineKeyboardMarkup(
         [
             [InlineKeyboardButton(label, callback_data=data) for label, data in row]

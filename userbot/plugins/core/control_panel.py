@@ -26,7 +26,7 @@ import psutil
 import pyrogram
 from pyrogram import filters
 from pyrogram.errors import MessageNotModified
-from pyrogram.types import CallbackQuery
+from pyrogram.types import CallbackQuery, InlineKeyboardMarkup
 
 from config import AUTO_DELETE_CMD, DATABASE_PATH, VERSION
 from db import (
@@ -111,12 +111,12 @@ def _plugin_counts(rows: list[dict]) -> tuple[int, int, int]:
     return total, active, total - active
 
 
-def _panel_markup():
+def _panel_markup() -> InlineKeyboardMarkup:
     return keyboard(
         [
             [("📦 Plugin Manager", "cp:plugins"), ("🎨 Theme Engine", "cp:themes")],
             [("📊 Dashboard", "cp:dashboard"), ("⚙️ Settings", "cp:settings")],
-            [("❌ Close", "cp:close")],
+            *nav_rows("cp:home"),
         ]
     )
 
@@ -249,7 +249,12 @@ def _dashboard_lines() -> list[str]:
 
 async def _edit(query: CallbackQuery, title: str, lines: list[str], markup=None):
     try:
-        await query.message.edit_text(render(f"{emoji(title)} {title}", "\n".join(lines)), reply_markup=markup)
+        await query._client.edit_message_text(
+            chat_id=query.message.chat.id,
+            message_id=query.message.id,
+            text=render(f"{emoji(title)} {title}", "\n".join(lines)),
+            reply_markup=markup,
+        )
     except MessageNotModified:
         pass
     except Exception as exc:
@@ -394,7 +399,13 @@ def _command_result(title: str, lines: list[str]) -> str:
 
 
 async def _send_command_panel(client, message, title: str, lines: list[str], markup=None):
-    await send_ui(client, message.chat.id, _command_result(title, lines), reply_markup=markup)
+    # reply_markup dibuat eksplisit agar InlineKeyboardMarkup tidak hilang
+    # ketika helper UI meneruskan argumen ke Pyrogram.
+    await client.send_message(
+        chat_id=message.chat.id,
+        text=_command_result(title, lines),
+        reply_markup=markup,
+    )
 
 
 def _settings_command(owner: int, args: list[str]) -> tuple[bool, str]:
