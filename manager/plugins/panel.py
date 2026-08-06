@@ -71,7 +71,7 @@ def _stats(users: Iterable[dict]) -> dict[str, int]:
     }
 
 
-def _panel_text() -> str:
+def _dashboard_text() -> str:
     stats = _stats(_users())
     runner = get_runner()
     runtime = "Running" if runner else "Offline"
@@ -89,29 +89,87 @@ def _panel_text() -> str:
     )
 
 
+def _home_text() -> str:
+    return (
+        "🎛 IBEKS CONTROL PANEL\n\n"
+        "Pilih menu yang ingin dibuka.\n"
+        "Navigasi dilakukan pada pesan panel yang sama."
+    )
+
+
+def _navigation_keyboard(back_callback: str = "panel:home") -> InlineKeyboardMarkup:
+    """Navigasi wajib untuk seluruh submenu Control Panel."""
+    return InlineKeyboardMarkup(
+        [[
+            InlineKeyboardButton("⬅ Back", callback_data=back_callback),
+            InlineKeyboardButton("🏠 Home", callback_data="panel:home"),
+            InlineKeyboardButton("❌ Close", callback_data="panel:close"),
+        ]]
+    )
+
+
 def _panel_keyboard() -> InlineKeyboardMarkup:
+    """Menu utama Bot Manager."""
     return InlineKeyboardMarkup(
         [
             [
-                InlineKeyboardButton("👥 Daftar User", callback_data="panel:users:0"),
-                InlineKeyboardButton("🟢 User Online", callback_data="panel:online"),
+                InlineKeyboardButton("📦 Plugin Manager", callback_data="panel:plugins"),
+                InlineKeyboardButton("🎨 Theme Engine", callback_data="panel:themes"),
             ],
             [
-                InlineKeyboardButton("⏳ Pending", callback_data="panel:pending"),
-                InlineKeyboardButton("🔍 Cari User", callback_data="panel:search"),
+                InlineKeyboardButton("📊 Dashboard", callback_data="panel:dashboard"),
+                InlineKeyboardButton("⚙️ Settings", callback_data="panel:settings"),
             ],
-            [
-                InlineKeyboardButton("📊 Statistik", callback_data="panel:stats"),
-                InlineKeyboardButton("♻ Refresh", callback_data="panel:refresh"),
-            ],
-            [InlineKeyboardButton("📅 Subscription", callback_data="panel:subscriptions:0")],
         ]
     )
 
 
+def _plugin_manager_keyboard() -> InlineKeyboardMarkup:
+    """Menu plugin yang tetap menyediakan seluruh operasi admin lama."""
+    rows = [
+        [
+            InlineKeyboardButton("👥 Daftar User", callback_data="panel:users:0"),
+            InlineKeyboardButton("🟢 User Online", callback_data="panel:online"),
+        ],
+        [
+            InlineKeyboardButton("⏳ Pending", callback_data="panel:pending"),
+            InlineKeyboardButton("🔍 Cari User", callback_data="panel:search"),
+        ],
+        [
+            InlineKeyboardButton("📊 Statistik", callback_data="panel:stats"),
+            InlineKeyboardButton("♻ Refresh", callback_data="panel:refresh"),
+        ],
+        [InlineKeyboardButton("📅 Subscription", callback_data="panel:subscriptions:0")],
+    ]
+    rows.extend(_navigation_keyboard("panel:home").inline_keyboard)
+    return InlineKeyboardMarkup(rows)
+
+
 def _back_panel_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("⬅️ Panel", callback_data="panel:refresh")]]
+    return _navigation_keyboard("panel:plugins")
+
+
+def _theme_text() -> str:
+    return (
+        "🎨 Theme Engine\n\n"
+        "Tema Bot Manager siap digunakan.\n"
+        "Tema aktif: Premium"
+    )
+
+
+def _settings_text() -> str:
+    return (
+        "⚙️ Settings\n\n"
+        "Pengaturan Bot Manager tersimpan secara terpusat.\n"
+        "Belum ada perubahan pada tahap ini."
+    )
+
+
+def _plugin_manager_text() -> str:
+    return (
+        "📦 Plugin Manager\n\n"
+        "Kelola Userbot, status akses, subscription, dan runtime "
+        "melalui menu di bawah."
     )
 
 
@@ -188,7 +246,7 @@ def _user_list_keyboard(
         )
     if navigation:
         rows.append(navigation)
-    rows.append([InlineKeyboardButton("⬅️ Kembali", callback_data=back_callback)])
+    rows.extend(_navigation_keyboard("panel:plugins").inline_keyboard)
     return InlineKeyboardMarkup(rows)
 
 
@@ -255,6 +313,7 @@ def _detail_keyboard(user: dict) -> InlineKeyboardMarkup:
             "✅ Aktifkan",
             callback_data=f"panel:activate:{telegram_id}",
         )
+    rows.extend(_navigation_keyboard("panel:plugins").inline_keyboard)
     return InlineKeyboardMarkup(rows)
 
 
@@ -307,6 +366,7 @@ def _subscription_keyboard(user: dict) -> InlineKeyboardMarkup:
     )
     rows.append([InlineKeyboardButton(f"Plan Saat Ini: {current_plan}", callback_data="panel:noop")])
     rows.append([InlineKeyboardButton("⬅️ Kembali", callback_data=f"panel:user:{telegram_id}")])
+    rows.extend(_navigation_keyboard("panel:plugins").inline_keyboard)
     return InlineKeyboardMarkup(rows)
 
 
@@ -345,8 +405,18 @@ def _remove_runtime(telegram_id: int) -> None:
         log.exception("[Panel] Gagal menghapus runtime user %s.", telegram_id)
 
 
-async def _show_panel(message) -> None:
-    await message.edit(_panel_text(), reply_markup=_panel_keyboard())
+async def _edit_panel(client, message, text: str, markup: InlineKeyboardMarkup) -> None:
+    """Edit panel yang sama; navigasi tidak mengirim pesan baru."""
+    await client.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=message.id,
+        text=text,
+        reply_markup=markup,
+    )
+
+
+async def _show_panel(client, message) -> None:
+    await _edit_panel(client, message, _home_text(), _panel_keyboard())
 
 
 async def _show_detail(query, telegram_id: int) -> bool:
@@ -421,7 +491,7 @@ def setup(client):
         if not _is_owner(message):
             await message.reply("❌ Akses ditolak.")
             return
-        await message.reply(_panel_text(), reply_markup=_panel_keyboard())
+        await message.reply(_home_text(), reply_markup=_panel_keyboard())
 
     @client.on_message(filters.private & filters.text & ~filters.command("start"))
     @safe_handler
@@ -440,7 +510,7 @@ def setup(client):
 
     @client.on_callback_query(
         filters.regex(
-            r"^panel:(refresh|online|pending|stats|search|users:\d+|user:\d+|"
+            r"^panel:(home|close|plugins|themes|dashboard|settings|refresh|online|pending|stats|search|users:\d+|user:\d+|"
             r"start:\d+|stop:\d+|restart:\d+|suspend:\d+|activate:\d+|"
             r"subscription:\d+|subscriptions:\d+|renew:(7|30|90|lifetime):\d+|"
             r"upgrade:\d+|downgrade:\d+|noop|delete:\d+|delete_confirm:\d+)$"
@@ -454,9 +524,52 @@ def setup(client):
         action, *values = query.data.split(":")[1:]
         if not query.message:
             return
-        if action in {"refresh"}:
+        if action == "close":
             await query.answer()
-            await _show_panel(query.message)
+            await query.message.delete()
+        elif action == "home":
+            await query.answer()
+            await _show_panel(_client, query.message)
+        elif action == "plugins":
+            await query.answer()
+            await _edit_panel(
+                _client,
+                query.message,
+                _plugin_manager_text(),
+                _plugin_manager_keyboard(),
+            )
+        elif action == "themes":
+            await query.answer()
+            await _edit_panel(
+                _client,
+                query.message,
+                _theme_text(),
+                _navigation_keyboard("panel:home"),
+            )
+        elif action == "dashboard":
+            await query.answer()
+            await _edit_panel(
+                _client,
+                query.message,
+                _dashboard_text(),
+                _navigation_keyboard("panel:home"),
+            )
+        elif action == "settings":
+            await query.answer()
+            await _edit_panel(
+                _client,
+                query.message,
+                _settings_text(),
+                _navigation_keyboard("panel:home"),
+            )
+        elif action in {"refresh"}:
+            await query.answer()
+            await _edit_panel(
+                _client,
+                query.message,
+                _plugin_manager_text(),
+                _plugin_manager_keyboard(),
+            )
         elif action == "users":
             await query.answer()
             page = int(values[0])
@@ -480,13 +593,18 @@ def setup(client):
             )
         elif action == "stats":
             await query.answer()
-            await query.message.edit(_stats_text(), reply_markup=_back_panel_keyboard())
+            await _edit_panel(
+                _client,
+                query.message,
+                _stats_text(),
+                _navigation_keyboard("panel:plugins"),
+            )
         elif action == "search":
             await query.answer()
             _searching.add(query.from_user.id)
             await query.message.edit(
                 "🔍 Cari User\n\nKirim nama, username, atau Telegram ID.",
-                reply_markup=_back_panel_keyboard(),
+                reply_markup=_navigation_keyboard("panel:plugins"),
             )
         elif action == "user":
             await query.answer()
@@ -635,7 +753,7 @@ def setup(client):
             deleted = delete_user(telegram_id)
             _remove_runtime(telegram_id)
             await query.answer("User dihapus." if deleted else "User tidak ditemukan.")
-            await _show_panel(query.message)
+            await _show_panel(_client, query.message)
             log.info("[Panel] Deleted user %s success=%s.", telegram_id, deleted)
         elif action in {"start", "stop", "restart", "suspend", "activate"}:
             await _owner_action(query, action, int(values[0]))
