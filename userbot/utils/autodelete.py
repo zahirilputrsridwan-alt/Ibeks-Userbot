@@ -12,7 +12,7 @@ import asyncio
 from typing import Any
 
 from utils.logger import log
-from utils.prefix_manager import get_prefix
+from utils.prefix_manager import get_owner_id, get_prefix
 
 
 # Command tanpa prefix yang pesan command-nya boleh dihapus otomatis.
@@ -49,6 +49,19 @@ async def auto_delete(message, delay: int = 5, force: bool = False) -> None:
     """
     if not force and not should_auto_delete(message):
         return
+
+    # Setting Control Panel berlaku dinamis untuk semua plugin lama yang
+    # sudah memakai helper ini, tanpa mengubah struktur atau decorator plugin.
+    try:
+        from db import get_setting
+
+        owner_id = get_owner_id()
+        if owner_id is not None:
+            if not force and not bool(get_setting(owner_id, "auto_delete", 1)):
+                return
+            delay = int(get_setting(owner_id, "delay_auto_delete", delay))
+    except Exception as exc:
+        log.debug("[AutoDelete] Setting dinamis tidak tersedia: %s", exc)
 
     await asyncio.sleep(delay)
     try:

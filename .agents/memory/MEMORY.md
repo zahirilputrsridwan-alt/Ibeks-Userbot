@@ -23,3 +23,4 @@
 - [Python local dependency environment](python-local-dependency-environment.md) — when system site-packages are read-only, install workflow dependencies into the project .pythonlibs environment.
 - [Core system boundaries](core-system.md) — preserve dynamic prefixes, Manager-only restart notifications, and per-plugin error isolation.
 - [Clone Manager panel](clone-manager-panel.md) — route clone success to one owner-only Manager panel and reuse the same restore operation via atomic IPC.
+- [Control Panel architecture](control-panel-architecture.md) — manage legacy plugins through loader registry and backward-compatible SQLite migrations.
