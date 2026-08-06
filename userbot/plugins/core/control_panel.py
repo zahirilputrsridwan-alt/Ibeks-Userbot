@@ -18,21 +18,17 @@ import asyncio
 import os
 import platform
 import shutil
-import sys
 import time
-from datetime import datetime
 
 import psutil
 import pyrogram
 from pyrogram import filters
 from pyrogram.errors import MessageNotModified
-from pyrogram.types import CallbackQuery, InlineKeyboardMarkup
+from pyrogram.types import CallbackQuery
 
 from config import AUTO_DELETE_CMD, DATABASE_PATH, VERSION
 from db import (
     ensure_user_settings,
-    get_conn,
-    get_plugin_status,
     get_setting,
     list_plugin_status,
     record_dashboard,
@@ -42,14 +38,13 @@ from db import (
 from loader import (
     disable_plugin,
     enable_plugin,
-    get_plugin_stats,
-    plugin_modules,
     reload_plugin,
 )
-from plugins.utils.ui import edit_ui, send_ui
+from plugins.utils.ui import send_ui
+from panel import register as register_panel
 from utils.autodelete import auto_delete
 from utils.control_log import record as audit
-from utils.control_ui import body, keyboard, nav_rows
+from utils.control_ui import keyboard, nav_rows
 from utils.filters import dynamic_command
 from utils.logger import log
 from utils.theme import available, current, emoji, render, render_theme, set_active
@@ -110,321 +105,6 @@ def _plugin_counts(rows: list[dict]) -> tuple[int, int, int]:
     total = len(rows)
     active = sum(1 for row in rows if row["enabled"] and row["loaded"])
     return total, active, total - active
-
-
-def _center_panel_markup() -> InlineKeyboardMarkup:
-    """Keyboard utama IBEKS Control Center untuk command .panel."""
-    return keyboard(
-        [
-            [("📦 Plugin", "cc:plugins"), ("🎨 Theme", "cc:themes")],
-            [("📊 Dashboard", "cc:dashboard"), ("⚙️ Settings", "cc:settings")],
-            [("⚡ Macro", "cc:macro"), ("👤 Permission", "cc:permission")],
-            [("☁️ Backup", "cc:backup"), ("🔄 Update", "cc:update")],
-            [("❌ Close", "cc:close")],
-        ]
-    )
-
-
-def _panel_markup() -> InlineKeyboardMarkup:
-    """Keyboard legacy untuk command panel internal cp:* lainnya."""
-    return keyboard(
-        [
-            [("📦 Plugin Manager", "cp:plugins"), ("🎨 Theme Engine", "cp:themes")],
-            [("📊 Dashboard", "cp:dashboard"), ("⚙️ Settings", "cp:settings")],
-            *nav_rows("cp:home"),
-        ]
-    )
-
-
-def _center_nav(back: str = "cc:home") -> list[list[tuple[str, str]]]:
-    return [[
-        ("⬅ Back", back),
-        ("🏠 Home", "cc:home"),
-        ("❌ Close", "cc:close"),
-    ]]
-
-
-def _center_text(title: str, lines: list[str]) -> str:
-    """Render Control Center melalui Theme Engine yang sudah ada."""
-    return render(title, "\n".join(lines))
-
-
-def _center_owner_id(message_or_query) -> int:
-    user = getattr(message_or_query, "from_user", None)
-    if not user:
-        user = getattr(getattr(message_or_query, "message", None), "from_user", None)
-    return int(getattr(user, "id", 0) or 0)
-
-
-def _center_launcher_text() -> str:
-    """Teks minimal launcher .panel; detail hanya ada di submenu."""
-    return "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟\n\nSilakan pilih menu di bawah."
-
-
-def _plugin_center_markup():
-    return keyboard(
-        [
-            [("📋 Daftar Plugin", "cc:plugins:list")],
-            [("➕ Enable", "cc:plugins:enable"), ("➖ Disable", "cc:plugins:disable")],
-            [("🔄 Reload", "cc:plugins:reload")],
-            *_center_nav(),
-        ]
-    )
-
-
-def _plugin_action_markup(action: str):
-    rows = [
-        [
-            (
-                f"{'✅' if row['enabled'] and row['loaded'] else '⛔'} "
-                f"{row['module'].rsplit('.', 1)[-1]}",
-                f"cc:plugin:{action}:{row['module']}",
-            )
-        ]
-        for row in list_plugin_status()
-    ]
-    return keyboard(rows + _center_nav("cc:plugins"))
-
-
-def _theme_center_markup():
-    names = ("Premium", "Freeze", "Minimal", "Neon", "Matrix")
-    return keyboard(
-        [[(f"{'✅ ' if name == current() else ''}{name}", f"cc:theme:set:{name}")]
-         for name in names] + _center_nav()
-    )
-
-
-def _settings_center_markup(owner: int):
-    return keyboard(
-        [
-            [(f"🗑 Auto Delete: {'ON' if get_setting(owner, 'auto_delete') else 'OFF'}",
-              "cc:setting:auto_delete")],
-            [(f"✨ Animation: {'ON' if get_setting(owner, 'animation') else 'OFF'}",
-              "cc:setting:animation")],
-            [(f"😀 Emoji: {'ON' if get_setting(owner, 'emoji_mode') else 'OFF'}",
-              "cc:setting:emoji_mode")],
-            [(f"⌨ Prefix: {get_setting(owner, 'prefix', '.')}", "cc:setting:prefix")],
-            [(f"🌐 Language: {get_setting(owner, 'language', 'id')}", "cc:setting:language")],
-            [("🎨 Theme", "cc:themes")],
-            *_center_nav(),
-        ]
-    )
-
-
-def _dashboard_center_lines() -> list[str]:
-    data = _dashboard_snapshot()
-    return [
-        f"⏱ Runtime\n│  ╰➤ {data['runtime']}",
-        f"🖥 CPU\n│  ╰➤ {data['cpu_percent']:.1f}%",
-        f"🧠 RAM\n│  ╰➤ {data['ram_percent']:.1f}%",
-        f"🗄 Database\n│  ╰➤ {data['database_size'] / 1024:.2f} KB",
-        f"📦 Plugin\n│  ╰➤ {data['active_plugins']} aktif / {data['total_plugins']} total",
-        f"🐍 Python\n│  ╰➤ {platform.python_version()}",
-        f"⚙️ Pyrogram\n│  ╰➤ {pyrogram.__version__}",
-    ]
-
-
-def _center_info_lines(page: str) -> list[str]:
-    details = {
-        "macro": [
-            "⚡ Macro",
-            "",
-            "Macro Center siap digunakan.",
-            "Tidak ada konfigurasi macro yang diubah.",
-        ],
-        "permission": [
-            "👤 Permission",
-            "",
-            "Mode akses: Owner Userbot",
-            "Command tetap dibatasi oleh filters.me.",
-        ],
-        "backup": [
-            "☁️ Backup",
-            "",
-            "Backup Center siap digunakan.",
-            "Data dan session tidak diubah dari panel ini.",
-        ],
-        "update": [
-            "🔄 Update",
-            "",
-            f"Versi saat ini: {VERSION}",
-            "Update plugin dilakukan melalui loader yang sudah ada.",
-        ],
-    }
-    return details[page]
-
-
-async def _center_edit(query, text: str, markup):
-    try:
-        await edit_ui(query._client, query.message, text, reply_markup=markup)
-    except MessageNotModified:
-        pass
-    except Exception as exc:
-        log.warning("[ControlCenter] Gagal mengedit panel: %s", exc)
-
-
-async def _center_show_home(query):
-    await _center_edit(
-        query,
-        _center_launcher_text(),
-        _center_panel_markup(),
-    )
-
-
-async def _center_show_plugins(query):
-    rows = list_plugin_status()
-    total, active, inactive = _plugin_counts(rows)
-    await _center_edit(
-        query,
-        _center_text(
-            "📦 𝗣𝗟𝗨𝗚𝗜𝗡",
-            [
-                f"Total Plugin\n│  ╰➤ {total}",
-                f"Plugin Aktif\n│  ╰➤ {active}",
-                f"Plugin Nonaktif\n│  ╰➤ {inactive}",
-            ],
-        ),
-        _plugin_center_markup(),
-    )
-
-
-async def _center_show_plugin_list(query):
-    rows = list_plugin_status()
-    lines = [
-        f"Total Plugin\n│  ╰➤ {len(rows)}",
-        "",
-        *[
-            f"{'✅' if row['enabled'] and row['loaded'] else '⛔'} "
-            f"{row['module']} — {_status_label(row)}"
-            for row in rows
-        ],
-    ]
-    await _center_edit(query, _center_text("📋 𝗗𝗔𝗙𝗧𝗔𝗥 𝗣𝗟𝗨𝗚𝗜𝗡", lines), keyboard(_center_nav("cc:plugins")))
-
-
-async def _center_show_plugin_action(query, action: str):
-    label = {"enable": "Enable", "disable": "Disable", "reload": "Reload"}[action]
-    await _center_edit(
-        query,
-        _center_text(
-            f"{'➕' if action == 'enable' else '➖' if action == 'disable' else '🔄'} {label.upper()}",
-            ["Pilih plugin yang ingin diproses."],
-        ),
-        _plugin_action_markup(action),
-    )
-
-
-async def _center_show_themes(query):
-    await _center_edit(
-        query,
-        _center_text(
-            "🎨 𝗧𝗛𝗘𝗠𝗘",
-            [f"Tema Aktif\n│  ╰➤ {current()}"],
-        ),
-        _theme_center_markup(),
-    )
-
-
-async def _center_show_dashboard(query):
-    await _center_edit(query, _center_text("📊 𝗗𝗔𝗦𝗛𝗕𝗢𝗔𝗥𝗗", _dashboard_center_lines()), keyboard(_center_nav()))
-
-
-async def _center_show_settings(query):
-    owner = _center_owner_id(query)
-    ensure_user_settings(owner)
-    await _center_edit(
-        query,
-        _center_text(
-            "⚙️ 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦",
-            [
-                f"🗑 Auto Delete\n│  ╰➤ {'Aktif' if get_setting(owner, 'auto_delete') else 'Nonaktif'}",
-                f"✨ Animation\n│  ╰➤ {'Aktif' if get_setting(owner, 'animation') else 'Nonaktif'}",
-                f"😀 Emoji\n│  ╰➤ {'Aktif' if get_setting(owner, 'emoji_mode') else 'Nonaktif'}",
-                f"⌨ Prefix\n│  ╰➤ {get_setting(owner, 'prefix', '.')}",
-                f"🌐 Language\n│  ╰➤ {get_setting(owner, 'language', 'id')}",
-                f"🎨 Theme\n│  ╰➤ {current()}",
-            ],
-        ),
-        _settings_center_markup(owner),
-    )
-
-
-async def _center_show_info(query, page: str):
-    title = {
-        "macro": "⚡ 𝗠𝗔𝗖𝗥𝗢",
-        "permission": "👤 𝗣𝗘𝗥𝗠𝗜𝗦𝗦𝗜𝗢𝗡",
-        "backup": "☁️ 𝗕𝗔𝗖𝗞𝗨𝗣",
-        "update": "🔄 𝗨𝗣𝗗𝗔𝗧𝗘",
-    }[page]
-    await _center_edit(query, _center_text(title, _center_info_lines(page)), keyboard(_center_nav()))
-
-
-async def _center_callback_handler(query: CallbackQuery):
-    data = query.data or ""
-    await query.answer()
-    if data == "cc:close":
-        try:
-            await query.message.delete()
-        except Exception:
-            pass
-    elif data == "cc:home":
-        await _center_show_home(query)
-    elif data == "cc:plugins":
-        await _center_show_plugins(query)
-    elif data == "cc:plugins:list":
-        await _center_show_plugin_list(query)
-    elif data.startswith("cc:plugins:"):
-        await _center_show_plugin_action(query, data.removeprefix("cc:plugins:"))
-    elif data.startswith("cc:plugin:"):
-        _, _, action, module = data.split(":", 3)
-        row = get_plugin_status(module)
-        result = "Plugin tidak ditemukan."
-        if row and not (module == __name__ and action == "disable"):
-            if action == "enable":
-                result = "Plugin berhasil diaktifkan." if enable_plugin(module) else "Plugin gagal diaktifkan."
-                if result.startswith("Plugin berhasil"):
-                    ok, detail = reload_plugin(query._client, module)
-                    if not ok:
-                        result = f"Plugin diaktifkan, tetapi reload gagal: {detail}"
-            elif action == "disable":
-                result = "Plugin berhasil dinonaktifkan." if disable_plugin(query._client, module) else "Plugin gagal dinonaktifkan."
-            elif action == "reload":
-                ok, detail = reload_plugin(query._client, module)
-                result = detail if ok else f"Reload gagal: {detail}"
-            audit(f"{action.title()} Plugin", f"{module} user={query.from_user.id}")
-        elif module == __name__ and action == "disable":
-            result = "Control Panel tidak dapat dinonaktifkan dari dirinya sendiri."
-        await _center_edit(
-            query,
-            _center_text("📦 𝗣𝗟𝗨𝗚𝗜𝗡", [f"├ {result}"]),
-            _plugin_center_markup(),
-        )
-    elif data == "cc:themes":
-        await _center_show_themes(query)
-    elif data.startswith("cc:theme:set:"):
-        name = data.removeprefix("cc:theme:set:")
-        if set_active(name):
-            audit("Ganti Theme", f"theme={name} user={query.from_user.id}")
-        await _center_show_themes(query)
-    elif data == "cc:dashboard":
-        await _center_show_dashboard(query)
-    elif data == "cc:settings":
-        await _center_show_settings(query)
-    elif data.startswith("cc:setting:"):
-        key = data.removeprefix("cc:setting:")
-        owner = _center_owner_id(query)
-        if key in _BOOL_SETTINGS:
-            set_setting(owner, key, int(not bool(get_setting(owner, key))))
-        elif key == "prefix":
-            prefixes = [".", "/", "!", "?"]
-            old = str(get_setting(owner, key, "."))
-            set_setting(owner, key, prefixes[(prefixes.index(old) + 1) % len(prefixes)] if old in prefixes else ".")
-        elif key == "language":
-            old = str(get_setting(owner, key, "id"))
-            set_setting(owner, key, "en" if old == "id" else "id")
-        await _center_show_settings(query)
-    elif data in {"cc:macro", "cc:permission", "cc:backup", "cc:update"}:
-        await _center_show_info(query, data.removeprefix("cc:"))
 
 
 def _plugin_markup():
@@ -739,15 +419,8 @@ def _settings_command(owner: int, args: list[str]) -> tuple[bool, str]:
 
 
 def setup(client):
-    @client.on_message(dynamic_command("panel") & filters.me)
-    async def cmd_panel(client, message):
-        asyncio.create_task(auto_delete(message, delay=AUTO_DELETE_CMD))
-        await send_ui(
-            client,
-            message.chat.id,
-            _center_launcher_text(),
-            reply_markup=_center_panel_markup(),
-        )
+    # .panel is owned by the modular stage-one Control Panel package.
+    register_panel(client)
 
     @client.on_message(dynamic_command("plugin") & filters.me)
     async def cmd_plugin(client, message):
@@ -840,10 +513,6 @@ def setup(client):
             await _send_command_panel(client, message, "SETTINGS", [f"├ {detail}"])
             return
         await _send_command_panel(client, message, "SETTINGS", _settings_lines(owner), _settings_markup(owner))
-
-    @client.on_callback_query(filters.regex(r"^cc:"))
-    async def center_callback(client, query):
-        await _center_callback_handler(query)
 
     @client.on_callback_query(filters.regex(r"^cp:"))
     async def cp_callback(client, query):
