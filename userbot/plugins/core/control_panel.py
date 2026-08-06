@@ -137,7 +137,11 @@ def _panel_markup() -> InlineKeyboardMarkup:
 
 
 def _center_nav(back: str = "cc:home") -> list[list[tuple[str, str]]]:
-    return [[("⬅ Back", back), ("🏠 Home", "cc:home")]]
+    return [[
+        ("⬅ Back", back),
+        ("🏠 Home", "cc:home"),
+        ("❌ Close", "cc:close"),
+    ]]
 
 
 def _center_text(title: str, lines: list[str]) -> str:
@@ -169,18 +173,8 @@ def _center_owner_id(message_or_query) -> int:
 
 
 def _center_home_lines(message) -> list[str]:
-    owner = _center_owner_id(message)
-    ensure_user_settings(owner)
-    rows = list_plugin_status()
-    total, active, _inactive = _plugin_counts(rows)
-    return [
-        f"👤 Owner\n│  ╰➤ {_owner_label(message)}",
-        "🟢 Status\n│  ╰➤ Online",
-        f"📦 Total Plugin\n│  ╰➤ {total} ({active} aktif)",
-        f"🎨 Theme Aktif\n│  ╰➤ {current()}",
-        f"⚙️ Prefix\n│  ╰➤ {get_setting(owner, 'prefix', '.')}",
-        f"⏱ Runtime\n│  ╰➤ {_runtime_text()}",
-    ]
+    # Halaman utama hanya navigator; statistik ditampilkan di Dashboard.
+    return ["Pilih menu yang ingin dikelola."]
 
 
 def _plugin_center_markup():
@@ -289,7 +283,7 @@ async def _center_show_home(query):
     await _center_edit(
         query,
         _center_text(
-            "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗣𝗔𝗡𝗘𝗟",
+            "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗖𝗘𝗡𝗧𝗘𝗥",
             _center_home_lines(query),
         ),
         _center_panel_markup(),
@@ -771,7 +765,7 @@ def setup(client):
             client,
             message.chat.id,
             _center_text(
-                "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗣𝗔𝗡𝗘𝗟",
+                "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗖𝗘𝗡𝗧𝗘𝗥",
                 _center_home_lines(message),
             ),
             reply_markup=_center_panel_markup(),
