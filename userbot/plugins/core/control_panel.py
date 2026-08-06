@@ -149,22 +149,6 @@ def _center_text(title: str, lines: list[str]) -> str:
     return render(title, "\n".join(lines))
 
 
-def _owner_label(message) -> str:
-    user = getattr(message, "from_user", None)
-    if not user:
-        return "Unknown"
-    name = " ".join(
-        part for part in (
-            getattr(user, "first_name", None),
-            getattr(user, "last_name", None),
-        ) if part
-    ).strip()
-    username = getattr(user, "username", None)
-    if username:
-        return f"@{username}"
-    return name or str(getattr(user, "id", "Unknown"))
-
-
 def _center_owner_id(message_or_query) -> int:
     user = getattr(message_or_query, "from_user", None)
     if not user:
@@ -172,9 +156,9 @@ def _center_owner_id(message_or_query) -> int:
     return int(getattr(user, "id", 0) or 0)
 
 
-def _center_home_lines(message) -> list[str]:
-    # Halaman utama hanya navigator; statistik ditampilkan di Dashboard.
-    return ["Pilih menu yang ingin dikelola."]
+def _center_launcher_text() -> str:
+    """Teks minimal launcher .panel; detail hanya ada di submenu."""
+    return "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟\n\nSilakan pilih menu di bawah."
 
 
 def _plugin_center_markup():
@@ -282,10 +266,7 @@ async def _center_edit(query, text: str, markup):
 async def _center_show_home(query):
     await _center_edit(
         query,
-        _center_text(
-            "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗖𝗘𝗡𝗧𝗘𝗥",
-            _center_home_lines(query),
-        ),
+        _center_launcher_text(),
         _center_panel_markup(),
     )
 
@@ -764,10 +745,7 @@ def setup(client):
         await send_ui(
             client,
             message.chat.id,
-            _center_text(
-                "💎 𝗜𝗕𝗘𝗞𝗦 𝗖𝗢𝗡𝗧𝗥𝗢𝗟 𝗖𝗘𝗡𝗧𝗘𝗥",
-                _center_home_lines(message),
-            ),
+            _center_launcher_text(),
             reply_markup=_center_panel_markup(),
         )
 
