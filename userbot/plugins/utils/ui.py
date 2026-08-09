@@ -70,9 +70,10 @@ async def edit_ui(
     if expandable:
         kwargs["parse_mode"] = ParseMode.HTML
         body = _expandable_html(body)
+    # gunakan message.chat.id dan message.message_id untuk kompatibilitas Pyrogram
     return await client.edit_message_text(
         message.chat.id,
-        message.id,
+        message.message_id,
         str(body or "").strip(),
         reply_markup=reply_markup,
         **kwargs,
