@@ -215,6 +215,14 @@ def main() -> None:
     # ── Muat semua plugin ke instance client ──────────────────────────────────
     plugin_stats = load_plugins(client)
 
+    # ── Daftarkan Control Panel jika tersedia ──────────────────────────────────
+    try:
+        import panel
+        panel.register(client)
+        log.info("[Main] Control Panel terdaftar.")
+    except Exception:
+        log.exception("[Main] Gagal mendaftarkan Control Panel.")
+
     # ── Debug handler: log semua pesan masuk (hanya log, tidak reply) ────────
     @client.on_message(filters.incoming)
     async def debug_incoming(_client, message):
