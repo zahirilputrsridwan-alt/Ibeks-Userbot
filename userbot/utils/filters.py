@@ -21,9 +21,24 @@ def dynamic_command(*commands):
             return False
         text = (message.text or message.caption).strip()
         prefix = get_prefix()
+        # Normalize text for comparison (do not change original for reply content)
         for cmd in filter_obj.commands:
             full = f"{prefix}{cmd}"
+            # Exact match or with args
             if text == full or text.startswith(full + " "):
+                return True
+            # Handle bot-mention suffix (e.g. .panel@BotName or .panel@BotName args)
+            try:
+                me = client.get_me()
+                username = getattr(me, "username", None)
+            except Exception:
+                username = None
+            if username:
+                at = f"@{username}"
+                if text == full + at or text.startswith(full + at + " "):
+                    return True
+            # Also accept variants with newline after command
+            if text.startswith(full + "\n"):
                 return True
         return False
     return filters.create(filter_func, "DynamicCommandFilter", commands=commands)
