@@ -1,32 +1,36 @@
-"""IBEKS Control Panel plugin (UI + navigation only)
+"""IBEKS Control Panel plugin (UI + navigation + READ-ONLY plugin list/info)
 
-Placed at: userbot/plugins/panel.py
+Location: userbot/plugins/panel.py
 
-Features:
-- Provides `.panel` command (OWNER only) to open Control Panel UI.
-- All navigation uses edit_message_text/edit_message_reply_markup.
-- Defines main menu and submenus. Submenu actions are placeholders (not executing runtime changes).
-- Callback data namespace: `ibeks_panel:` prefix.
+This extends the previously-added panel with read-only features:
+- List Plugin (reads from DB)
+- Plugin Info (reads metadata + attempts to parse commands from source)
 
-This plugin implements `setup(client)` so it will be loaded by the existing loader.
+Constraints honored:
+- No destructive actions (no enable/disable/reload/etc.)
+- No modification of loader or other core files
+- Owner-only access
+- All navigation uses existing UI helpers and edit_message
+- Callback namespace: ibeks_panel:... 
 """
 
 from __future__ import annotations
 
-import typing
+import ast
+import os
+from typing import List
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup
 
 from config import OWNER_ID, CMD_PREFIX
 from plugins.utils.ui import send_ui
-from utils.control_ui import keyboard, body, edit_panel, nav_rows
+from utils.control_ui import keyboard, edit_panel, nav_rows
 from utils.control_log import record
-from loader import plugin_modules
+from db import list_plugin_status, get_plugin_status
 
 PFX = "ibeks_panel"
 
-# Main menu mapping: key -> (label)
 MAIN_MENU = [
     ("plugin", "📦 Plugin Manager"),
     ("store", "🧩 Plugin Store"),
@@ -41,12 +45,19 @@ MAIN_MENU = [
 
 
 def _cb(*parts: str) -> str:
-    """Build callback_data with our prefix."""
     return f"{PFX}:{':'.join(parts)}"
 
 
+def _encode_module(module: str) -> str:
+    # safe reversible encoding for callback_data (avoid ':' collisions)
+    return module.replace(".", "|")
+
+
+def _decode_module(token: str) -> str:
+    return token.replace("|", ".")
+
+
 def _main_markup() -> InlineKeyboardMarkup:
-    # Build a grid of 3 columns
     rows = []
     row = []
     for idx, (key, label) in enumerate(MAIN_MENU, start=1):
@@ -60,25 +71,23 @@ def _main_markup() -> InlineKeyboardMarkup:
     return keyboard(rows)
 
 
-async def _show_main(client, message):
+async def _show_main(query, message=None):
     title = "IBEKS Control Panel"
-    lines = ["Pilih menu:", ""]
-    lines.extend(f"{label}" for _, label in MAIN_MENU)
+    lines = ["Selamat datang di IBEKS Control Panel", "Pilih menu untuk melanjutkan:"]
     markup = _main_markup()
-    # send initial UI by editing if message provided, else send new
-    if message is None:
-        # send new message
-        await send_ui(client, client._bot_user.id if hasattr(client, "_bot_user") else message.chat.id, "\n".join(lines), title=title, reply_markup=markup)
+    if query is None:
+        # send new message (command path)
+        await send_ui(message._client, message.chat.id, "\n".join(lines), title=title, reply_markup=markup)
     else:
-        await edit_panel(message._client, message, title, lines, markup=markup)
+        await edit_panel(query, title, lines, markup=markup)
 
 
-# Submenu builders -----------------------------------------------------------
+# ---------------- Plugin Manager: List & Info (READ-ONLY) ------------------
 
-def _submenu_markup(category_key: str, items: list[tuple[str, str]]) -> InlineKeyboardMarkup:
-    rows = [[(label, _cb(category_key, action))] for action, label in items]
-    rows.append(nav_rows(back=_cb("main", "home")))
-    return keyboard(rows)
+def _format_status(row: dict) -> str:
+    enabled = "✅ Enabled" if row.get("enabled") else "❌ Disabled"
+    loaded = "(Loaded)" if row.get("loaded") else "(Not loaded)"
+    return f"{enabled} {loaded}"
 
 
 async def _show_plugin_manager(query, message):
@@ -86,119 +95,136 @@ async def _show_plugin_manager(query, message):
     lines = ["Plugin Manager", "Pilih aksi:"]
     items = [
         ("list", "📋 List Plugin"),
-        ("enable", "✅ Enable Plugin"),
-        ("disable", "❌ Disable Plugin"),
-        ("reload", "🔄 Reload Plugin"),
-        ("reload_all", "🔃 Reload All"),
-        ("info", "ℹ️ Plugin Info"),
+        ("info", "🔍 Plugin Info"),
     ]
-    markup = _submenu_markup("plugin", items)
+    rows = [[(label, _cb("plugin", action))] for action, label in items]
+    rows.append(nav_rows(back=_cb("main", "home")))
+    markup = keyboard(rows)
     await edit_panel(query, title, lines, markup=markup)
 
 
-async def _show_theme_engine(query, message):
-    title = "Theme Engine"
-    lines = ["Theme Engine", "Pilih aksi:"]
-    items = [
-        ("list", "🎨 List Theme"),
-        ("set", "🔘 Set Theme"),
-        ("preview", "👁 Preview"),
-    ]
-    markup = _submenu_markup("theme", items)
+async def _show_plugin_list(query, message):
+    title = "Plugin List"
+    plugins = list_plugin_status()
+    if not plugins:
+        lines = ["Tidak ada plugin yang terdaftar."]
+        markup = keyboard([[("⬅ Back", _cb("main", "plugin")), ("🏠 Home", _cb("main", "home")), ("❌ Close", _cb("close", "now"))]])
+        await edit_panel(query, title, lines, markup=markup)
+        return
+
+    lines = [f"Total plugin: {len(plugins)}", ""]
+    buttons = []
+    for p in plugins:
+        name = p.get("filename") or p.get("module")
+        module = p.get("module")
+        status = _format_status(p)
+        lines.append(f"• {name} — {status}")
+        token = _encode_module(module)
+        buttons.append([(name, _cb("plugin", "info_select", token))])
+
+    # paginate plugin buttons into rows of 2
+    btn_rows = []
+    cur = []
+    for row in buttons:
+        cur.extend(row)
+        if len(cur) >= 2:
+            btn_rows.append(cur)
+            cur = []
+    if cur:
+        btn_rows.append(cur)
+
+    nav = [("⬅ Back", _cb("main", "plugin")), ("🏠 Home", _cb("main", "home")), ("❌ Close", _cb("close", "now"))]
+    btn_rows.append(nav)
+    markup = keyboard(btn_rows)
     await edit_panel(query, title, lines, markup=markup)
 
 
-async def _show_plugin_store(query, message):
-    title = "Plugin Store"
-    lines = ["Plugin Store", "Fitur belum tersedia."]
-    markup = _submenu_markup("store", [])
+async def _show_plugin_info(query, message, module_token: str):
+    module = _decode_module(module_token)
+    title = "Plugin Info"
+    meta = get_plugin_status(module)
+    if not meta:
+        lines = [f"Plugin '{module}' tidak ditemukan di database."]
+        markup = keyboard([[("⬅ Back", _cb("main", "plugin")), ("🏠 Home", _cb("main", "home")), ("❌ Close", _cb("close", "now"))]])
+        await edit_panel(query, title, lines, markup=markup)
+        return
+
+    lines = []
+    lines.append(f"Name: {meta.get('filename')}")
+    lines.append(f"Module: {meta.get('module')}")
+    lines.append(f"Category: {meta.get('category')}")
+    lines.append(f"Version: {meta.get('version')}")
+    lines.append(f"Author: {meta.get('author')}")
+    lines.append(f"Commands (count): {meta.get('command_count')}")
+
+    cmd_list: List[str] = []
+    file_path = meta.get('file_path')
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                src = f.read()
+            cmd_list = _extract_commands_from_source(src)
+        except Exception:
+            cmd_list = []
+
+    if cmd_list:
+        lines.append("")
+        lines.append("Commands:")
+        for c in cmd_list:
+            lines.append(f"• {c}")
+    else:
+        lines.append("")
+        lines.append("Commands: (detail tidak tersedia)")
+
+    lines.append("")
+    lines.append(f"Status: {('Enabled' if meta.get('enabled') else 'Disabled')} / {('Loaded' if meta.get('loaded') else 'Not loaded')}")
+    lines.append(f"File size: {meta.get('file_size')} bytes")
+    lines.append(f"Path: {meta.get('file_path')}")
+
+    markup = keyboard([[("⬅ Back", _cb("main", "plugin")), ("🏠 Home", _cb("main", "home")), ("❌ Close", _cb("close", "now"))]])
     await edit_panel(query, title, lines, markup=markup)
 
 
-async def _show_dashboard(query, message):
-    title = "Dashboard"
-    lines = ["Dashboard", "Ringkasan sistem dan plugin."]
-    items = [
-        ("sys", "📈 System Stats"),
-        ("plugins", "🧩 Plugin Stats"),
-        ("refresh", "🔄 Refresh"),
-    ]
-    markup = _submenu_markup("dashboard", items)
-    await edit_panel(query, title, lines, markup=markup)
+# ----------------- Source parsing helper (best-effort, read-only) ---------
+
+def _extract_commands_from_source(source: str) -> List[str]:
+    commands: List[str] = []
+    try:
+        tree = ast.parse(source)
+    except Exception:
+        return commands
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'dynamic_command':
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    commands.append(arg.value)
+        if isinstance(node, ast.Call):
+            func = node.func
+            func_name = None
+            if isinstance(func, ast.Attribute):
+                func_name = func.attr
+            elif isinstance(func, ast.Name):
+                func_name = func.id
+            if func_name == 'command':
+                if node.args:
+                    a0 = node.args[0]
+                    if isinstance(a0, ast.List):
+                        for elt in a0.elts:
+                            if isinstance(elt, ast.Constant) and isinstance(elt.value, str):
+                                commands.append(elt.value)
+                    elif isinstance(a0, ast.Constant) and isinstance(a0.value, str):
+                        commands.append(a0.value)
+    seen = set()
+    out: List[str] = []
+    for c in commands:
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
 
 
-async def _show_macro(query, message):
-    title = "Macro"
-    lines = ["Macro Manager", "Kelola macro Anda."]
-    items = [
-        ("list", "📋 List Macro"),
-        ("add", "➕ Add Macro"),
-        ("edit", "✏️ Edit Macro"),
-        ("delete", "🗑 Delete Macro"),
-    ]
-    markup = _submenu_markup("macro", items)
-    await edit_panel(query, title, lines, markup=markup)
-
-
-async def _show_backup(query, message):
-    title = "Backup"
-    lines = ["Backup & Restore", "Kelola backup data."]
-    items = [
-        ("create", "💾 Create Backup"),
-        ("list", "📋 List Backup"),
-        ("restore", "♻️ Restore"),
-    ]
-    markup = _submenu_markup("backup", items)
-    await edit_panel(query, title, lines, markup=markup)
-
-
-async def _show_update(query, message):
-    title = "Update"
-    lines = ["Update", "Periksa & terapkan pembaruan."]
-    items = [("check", "🔄 Check Update")]
-    markup = _submenu_markup("update", items)
-    await edit_panel(query, title, lines, markup=markup)
-
-
-async def _show_permission(query, message):
-    title = "Permission"
-    lines = ["Permission Groups", "Kelola role pengguna."]
-    items = [
-        ("owner", "👑 Owner"),
-        ("sudo", "🛡 Sudo"),
-        ("pro", "💎 Pro"),
-        ("seller", "🛍 Seller"),
-        ("fun", "🎮 Fun User"),
-    ]
-    markup = _submenu_markup("permission", items)
-    await edit_panel(query, title, lines, markup=markup)
-
-
-async def _show_settings(query, message):
-    title = "Settings"
-    lines = ["General Settings", "Sesuaikan preferensi userbot."]
-    items = [
-        ("prefix", "Prefix"),
-        ("autodelete", "Auto Delete"),
-        ("animation", "Animation"),
-        ("logger", "Logger"),
-        ("emoji_mode", "Emoji Mode"),
-        ("theme", "Theme"),
-    ]
-    markup = _submenu_markup("settings", items)
-    await edit_panel(query, title, lines, markup=markup)
-
-
-# Action placeholders (non-destructive) -------------------------------------
-
-async def _placeholder_action(query, category: str, action: str):
-    title = f"{category.title()} - {action.title()}"
-    lines = [f"Fitur '{action}' pada kategori '{category}' belum diimplementasikan."]
-    markup = keyboard([[("⬅ Back", _cb("main", "home")), ("🏠 Home", _cb("main", "home")), ("❌ Close", _cb("close", "now"))]])
-    await edit_panel(query, title, lines, markup=markup)
-
-
-# Command and callback handlers ---------------------------------------------
+# ---------------- Handlers & plugin contract -------------------------------
 
 
 def _is_owner(user_id: int) -> bool:
@@ -209,15 +235,12 @@ def _is_owner(user_id: int) -> bool:
 
 
 async def _panel_command(client, message):
-    # Owner-only
     if not _is_owner(message.from_user.id if message.from_user else 0):
         await message.reply_text("Panel hanya untuk Owner.")
         return
-
     title = "IBEKS Control Panel"
     lines = ["Selamat datang di IBEKS Control Panel", "Pilih menu untuk melanjutkan:"]
     markup = _main_markup()
-    # send initial message and keep it for edits
     await send_ui(client, message.chat.id, "\n".join(lines), title=title, reply_markup=markup)
     record("panel_open", f"owner={message.from_user.id}")
 
@@ -225,79 +248,50 @@ async def _panel_command(client, message):
 async def _panel_callback(client, query):
     await query.answer()
     data = (query.data or "").split(":")
-    # data format: ibeks_panel:section:action[:...]
     if len(data) < 2:
         return
     _, section, *rest = data
     action = rest[0] if rest else ""
 
-    # Navigation handling
-    if section == "main":
-        if action == "home" or action == "":
-            # show main menu
-            await edit_panel(query, "IBEKS Control Panel", ["Pilih menu:"], markup=_main_markup())
+    # main menu navigation
+    if section == 'main':
+        if action in ('', 'home'):
+            await edit_panel(query, "IBEKS Control Panel", ["Selamat datang di IBEKS Control Panel", "Pilih menu untuk melanjutkan:"], markup=_main_markup())
             return
-        # Map keys to submenu shows
-        if action == "plugin":
+        if action == 'plugin':
             await _show_plugin_manager(query, query.message)
             return
-        if action == "store":
-            await _show_plugin_store(query, query.message)
-            return
-        if action == "theme":
-            await _show_theme_engine(query, query.message)
-            return
-        if action == "dashboard":
-            await _show_dashboard(query, query.message)
-            return
-        if action == "macro":
-            await _show_macro(query, query.message)
-            return
-        if action == "backup":
-            await _show_backup(query, query.message)
-            return
-        if action == "update":
-            await _show_update(query, query.message)
-            return
-        if action == "permission":
-            await _show_permission(query, query.message)
-            return
-        if action == "settings":
-            await _show_settings(query, query.message)
-            return
-
-    if section in {"plugin", "theme", "store", "dashboard", "macro", "backup", "update", "permission", "settings"}:
-        # action-level placeholder
-        if action == "" or action == "home":
-            # go back to main menu
-            await edit_panel(query, "IBEKS Control Panel", ["Pilih menu:"], markup=_main_markup())
-            return
-        if action == "close" or section == "close":
-            try:
-                await client.delete_messages(query.message.chat.id, query.message.id)
-            except Exception:
-                pass
-            return
-        # Placeholder for deeper actions
-        await _placeholder_action(query, section, action)
+        # other main menu entries are placeholders
+        await edit_panel(query, 'IBEKS Control Panel', [f"Menu '{action}' belum diimplementasikan."], markup=_main_markup())
         return
 
-    if section == "close":
-        # delete message
+    # plugin manager sub-actions
+    if section == 'plugin':
+        if action == 'list':
+            await _show_plugin_list(query, query.message)
+            return
+        if action == 'info':
+            await _show_plugin_manager(query, query.message)
+            return
+        if action == 'info_select' and rest:
+            token = rest[0]
+            await _show_plugin_info(query, query.message, token)
+            return
+
+    if section == 'close':
         try:
             await client.delete_messages(query.message.chat.id, query.message.id)
         except Exception:
             pass
         return
 
+    # generic navigation: back/home
+    if action in ('back', 'home'):
+        await edit_panel(query, "IBEKS Control Panel", ["Selamat datang di IBEKS Control Panel", "Pilih menu untuk melanjutkan:"], markup=_main_markup())
+        return
 
-# Plugin contract -----------------------------------------------------------
 
 def setup(client):
-    # Register command handler and callback query handler
-    client.add_handler(lambda *a, **k: None)  # no-op to satisfy some checker if needed
-    client.add_handler  # silence unused
-    # Decorators: attach handlers via decorators to integrate with loader's registry
     @client.on_message(filters.command(["panel"], prefixes=CMD_PREFIX) & filters.user(OWNER_ID))
     async def _cmd(client_, message_):
         await _panel_command(client_, message_)
@@ -307,8 +301,5 @@ def setup(client):
         await _panel_callback(client_, query_)
 
 
-# For manual import in userbot/main.py: expose register
-
 def register(client):
-    """Compatibility: userbot.main may import `panel` and call register(client)."""
     setup(client)
