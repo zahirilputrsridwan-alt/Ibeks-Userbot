@@ -25,7 +25,13 @@ from pyrogram import StopPropagation, filters
 from pyrogram.enums import ChatType, MessageEntityType
 from pyrogram.errors import Forbidden, FloodWait, RPCError
 
-from db import ensure_user_settings, get_setting, set_setting
+from db import (
+    ensure_user_settings,
+    get_setting,
+    set_setting,
+    set_chat_lock,
+    list_locked_chats,
+)
 from plugins.utils.ui import send_ui
 from utils.filters import dynamic_command
 from utils.prefix_manager import get_owner_id, set_owner_id
@@ -95,9 +101,15 @@ async def _is_contact(client, user_id: int) -> bool:
             # Pyrogram bisa mengembalikan User, or Dialog (dengan attribute .user)
             uid = 0
             if getattr(c, "id", None) is not None:
-                uid = int(getattr(c, "id", 0) or 0)
+                try:
+                    uid = int(getattr(c, "id", 0) or 0)
+                except Exception:
+                    uid = 0
             elif getattr(c, "user", None) is not None:
-                uid = int(getattr(getattr(c, "user"), "id", 0) or 0)
+                try:
+                    uid = int(getattr(getattr(c, "user"), "id", 0) or 0)
+                except Exception:
+                    uid = 0
             if uid:
                 ids.add(uid)
     return user_id in ids
@@ -143,7 +155,7 @@ def setup(client):
     @client.on_message(filters.incoming & filters.private, group=-90)
     async def pm_gate(client, message):
         """Tolak PM sesuai mode tanpa pernah memproses pesan outgoing."""
-        # Hanya tangani pesan masuk dari user (bukan service/chat/channel)
+        # Pastikan private chat
         if getattr(message.chat, "type", None) != ChatType.PRIVATE:
             return
 
@@ -173,23 +185,41 @@ def setup(client):
         )
 
         # Kirim balasan aman, hindari crash bila bot tidak dapat mengirim pesan
+        # lalu block sender agar tidak bisa melanjutkan PM.
         try:
-            # Reply di private chat aman; hindari reply loop dengan mengecek is_bot
+            # Hindari reply ke akun bot
             if getattr(sender, "is_bot", False):
-                # Jangan reply bot
+                # jangan block bot accounts; hentikan propagation saja
                 raise StopPropagation
-            await message.reply(rejection)
-        except Forbidden:
-            # bot dilarang mengirim pesan (di-blocked) — nothing to do
+
+            # Kirim rejection message (jika diizinkan oleh Telegram)
+            try:
+                await message.reply(rejection)
+            except (Forbidden, FloodWait, RPCError):
+                # Jika tidak bisa mengirim reply, tetap lanjut ke block agar chat terkunci
+                pass
+            except Exception:
+                pass
+
+            # Block sender untuk mencegah pengiriman pesan lanjutan
+            try:
+                await client.block_user(sender_id)
+            except (Forbidden, FloodWait, RPCError):
+                # Be graceful jika block gagal
+                pass
+            except Exception:
+                pass
+
+            # Tandai di DB bahwa chat ini dikunci oleh mekanisme PM lock
+            try:
+                set_chat_lock(sender_id, True)
+            except Exception:
+                # jangan crash bila DB error
+                pass
+
+        finally:
+            # Hentikan propagation supaya handler lain tidak memproses PM yang sama
             raise StopPropagation
-        except FloodWait:
-            # bila ada FloodWait, abaikan agar tidak crash (Pyrogram akan raise)
-            raise StopPropagation
-        except Exception:
-            # jangan crash; biarkan handler lain tetap berjalan
-            raise StopPropagation
-        # Hentikan propagation supaya handler lain tidak memproses PM yang sama
-        raise StopPropagation
 
     @client.on_message(filters.incoming & filters.group, group=-80)
     async def tagreply_gate(client, message):
@@ -248,7 +278,31 @@ def setup(client):
                 "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
             )
             return
+
+        # Jika owner membuka kembali ke 'all', lakukan unblock untuk semua chat
+        prev_mode = get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)
         set_setting(owner_id, "pm_mode", mode)
+
+        if mode == "all":
+            # Unblock chats yang sebelumnya kita blokir (catatan: unblock hanya chat yang
+            # tercatat di chat_lock sebagai locked; tidak mengubah block yang dibuat manual)
+            try:
+                locked = list_locked_chats()
+                for cid in locked:
+                    try:
+                        await client.unblock_user(cid)
+                    except (Forbidden, FloodWait, RPCError):
+                        pass
+                    except Exception:
+                        pass
+                    try:
+                        set_chat_lock(cid, False)
+                    except Exception:
+                        pass
+            except Exception:
+                # jangan crash bila DB/Network error
+                pass
+
         labels = {"all": "Semua orang", "contacts": "Kontak saja", "nobody": "Tidak seorang pun"}
         await send_ui(client, message.chat.id, f"✅ PM Control: {labels[mode]}.")
 
