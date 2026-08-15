@@ -1,0 +1,168 @@
+Tambahkan 2 fitur baru ke Userbot saya. JANGAN menghapus, merombak, atau mengubah fitur yang sudah ada. Ikuti struktur plugin, database, permission, helper, dan style yang sudah digunakan project.
+
+════════════════════════════
+FITUR 1 — PM CONTROL
+════════════════════════════
+
+Buat command:
+
+.pm all
+.pm contacts
+.pm nobody
+
+Fungsi:
+
+1. `.pm all`
+   - Semua orang boleh mengirim PM.
+   - Tidak ada auto-reply penolakan.
+
+2. `.pm contacts`
+   - Hanya orang yang ada di kontak yang boleh mengirim PM.
+   - Jika bukan kontak, otomatis kirim pesan penolakan.
+
+3. `.pm nobody`
+   - Semua PM dari orang lain ditolak.
+   - Owner/Sudo sesuai permission system tetap dikecualikan.
+
+PENTING:
+- Hanya berlaku di private chat.
+- Tidak boleh aktif di grup.
+- Setting harus tersimpan setelah restart.
+- Jangan membuat reply loop/spam.
+- Jangan merusak handler PM yang sudah ada.
+
+
+════════════════════════════
+CUSTOM PM REJECTION MESSAGE
+════════════════════════════
+
+Tambahkan command:
+
+.pmmsg set <pesan>
+.pmmsg status
+.pmmsg reset
+
+Contoh:
+
+.pmmsg set 🚫 Jangan chat saya dulu, sedang sibuk bro 😴
+
+Maka ketika PM ditolak, Userbot membalas:
+
+🚫 Jangan chat saya dulu, sedang sibuk bro 😴
+
+`.pmmsg status`
+- Menampilkan pesan penolakan PM yang sedang digunakan.
+
+`.pmmsg reset`
+- Mengembalikan pesan default:
+
+🚫 PM DITOLAK
+
+Pesan custom harus disimpan di database agar tidak hilang setelah restart.
+
+
+════════════════════════════
+FITUR 2 — TAG REPLY KHUSUS GRUP
+════════════════════════════
+
+Buat command:
+
+.tagreply on
+.tagreply off
+.tagreply set <pesan>
+.tagreply status
+.tagreply reset
+
+Fungsi:
+
+`.tagreply on`
+- Mengaktifkan auto-reply ketika Userbot di-mention/tag.
+
+`.tagreply off`
+- Mematikan fitur.
+
+`.tagreply set <pesan>`
+- User dapat menentukan sendiri kata-kata balasannya.
+
+Contoh:
+
+.tagreply set Ada apa manggil-manggil saya? 😂
+
+Jika seseorang di grup mention Userbot:
+
+@username bang
+
+Userbot otomatis membalas:
+
+Ada apa manggil-manggil saya? 😂
+
+
+`.tagreply status`
+- Menampilkan status ON/OFF dan pesan yang sedang digunakan.
+
+`.tagreply reset`
+- Mengembalikan pesan default Tag Reply.
+
+
+ATURAN TAG REPLY:
+- HANYA bekerja di grup/supergroup.
+- Jangan bekerja di private chat.
+- Deteksi mention username Userbot menggunakan Telegram message entity.
+- Jangan membalas pesan yang tidak melakukan mention.
+- Jangan membalas mention dari Userbot sendiri.
+- Cegah spam/reply berulang jika orang melakukan mention berkali-kali.
+- Setting ON/OFF dan pesan custom harus tersimpan setelah restart.
+
+
+════════════════════════════
+CONTOH HASIL
+════════════════════════════
+
+PM:
+
+.pm contacts
+
+.pmmsg set 🚫 Maaf bro, PM saya khusus kontak.
+
+Orang bukan kontak mengirim PM:
+
+🚫 Maaf bro, PM saya khusus kontak.
+
+
+GRUP:
+
+.tagreply on
+
+.tagreply set Jangan tag saya, langsung ngomong aja 😂
+
+Orang mention Userbot:
+
+@username
+
+Userbot:
+
+Jangan tag saya, langsung ngomong aja 😂
+
+
+════════════════════════════
+DATABASE / PERMISSION
+════════════════════════════
+
+- Gunakan SQLite/database yang SUDAH ADA.
+- Jangan membuat database baru jika project sudah memiliki database.
+- Simpan PM mode, PM rejection message, Tag Reply status, dan Tag Reply message.
+- Gunakan sistem permission yang SUDAH ADA.
+- Jangan membuat permission system baru.
+- Command konfigurasi hanya boleh digunakan oleh user yang memiliki permission sesuai sistem Userbot.
+
+
+════════════════════════════
+SETELAH SELESAI
+════════════════════════════
+
+1. Tampilkan file yang dibuat/diubah.
+2. Jelaskan perubahan setiap file.
+3. Pastikan tidak ada duplicate handler.
+4. Jalankan py_compile/compileall untuk mengecek syntax.
+5. Jika ada error, perbaiki.
+6. Jangan mengubah fitur lain yang tidak berhubungan dengan fitur ini.

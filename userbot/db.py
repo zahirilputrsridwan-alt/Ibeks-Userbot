@@ -90,6 +90,10 @@ def init_db() -> None:
             theme        TEXT NOT NULL DEFAULT 'Premium',
             language     TEXT NOT NULL DEFAULT 'id',
             timezone     TEXT NOT NULL DEFAULT 'UTC',
+            pm_mode      TEXT NOT NULL DEFAULT 'all',
+            pm_rejection_message TEXT NOT NULL DEFAULT '🚫 PM DITOLAK',
+            tagreply_enabled INTEGER NOT NULL DEFAULT 0,
+            tagreply_message TEXT NOT NULL DEFAULT 'Ada apa manggil-manggil saya? 😂',
             updated_at   TEXT DEFAULT (datetime('now'))
         )
     """)
@@ -207,6 +211,10 @@ def _ensure_settings_columns(cursor: sqlite3.Cursor) -> None:
         "theme": "TEXT NOT NULL DEFAULT 'Premium'",
         "language": "TEXT NOT NULL DEFAULT 'id'",
         "timezone": "TEXT NOT NULL DEFAULT 'UTC'",
+        "pm_mode": "TEXT NOT NULL DEFAULT 'all'",
+        "pm_rejection_message": "TEXT NOT NULL DEFAULT '🚫 PM DITOLAK'",
+        "tagreply_enabled": "INTEGER NOT NULL DEFAULT 0",
+        "tagreply_message": "TEXT NOT NULL DEFAULT 'Ada apa manggil-manggil saya? 😂'",
     }
     for name, definition in additions.items():
         if name not in columns:
@@ -245,6 +253,10 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "theme": "Premium",
     "language": "id",
     "timezone": "UTC",
+    "pm_mode": "all",
+    "pm_rejection_message": "🚫 PM DITOLAK",
+    "tagreply_enabled": 0,
+    "tagreply_message": "Ada apa manggil-manggil saya? 😂",
 }
 
 
@@ -255,8 +267,9 @@ def ensure_user_settings(telegram_id: int) -> None:
         """
         INSERT INTO settings
             (telegram_id, prefix, auto_delete, delay_auto_delete, animation,
-             logger, emoji_mode, theme, language, timezone)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             logger, emoji_mode, theme, language, timezone, pm_mode,
+             pm_rejection_message, tagreply_enabled, tagreply_message)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(telegram_id) DO NOTHING
         """,
         (
@@ -270,6 +283,10 @@ def ensure_user_settings(telegram_id: int) -> None:
             DEFAULT_SETTINGS["theme"],
             DEFAULT_SETTINGS["language"],
             DEFAULT_SETTINGS["timezone"],
+            DEFAULT_SETTINGS["pm_mode"],
+            DEFAULT_SETTINGS["pm_rejection_message"],
+            DEFAULT_SETTINGS["tagreply_enabled"],
+            DEFAULT_SETTINGS["tagreply_message"],
         ),
     )
     conn.commit()
