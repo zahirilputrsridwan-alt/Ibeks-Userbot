@@ -19,6 +19,7 @@ command/plugin lain tetap berjalan seperti sebelumnya.
 from __future__ import annotations
 
 import time
+import traceback
 from collections.abc import Iterable
 
 from pyrogram import StopPropagation, filters
@@ -35,6 +36,7 @@ from db import (
 from plugins.utils.ui import send_ui
 from utils.filters import dynamic_command
 from utils.prefix_manager import get_owner_id, set_owner_id
+from utils.logger import log
 
 DEFAULT_PM_MODE = "all"
 DEFAULT_PM_MESSAGE = "🚫 PM DITOLAK"
@@ -91,7 +93,8 @@ async def _is_contact(client, user_id: int) -> bool:
     """
     try:
         contacts = await client.get_contacts()
-    except RPCError:
+    except RPCError as exc:
+        log.exception("[PMGate] get_contacts() failed: %s", exc)
         # Jika ada error API, anggap bukan kontak (lebih aman)
         return False
 
@@ -161,64 +164,73 @@ def setup(client):
 
         owner_id = await _account_id(client)
         mode = str(get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)).casefold()
-        if mode == "all":
-            return
 
         sender = getattr(message, "from_user", None)
         sender_id = int(getattr(sender, "id", 0) or 0)
+
+        # Log for debugging — penting untuk memastikan handler dieksekusi
+        log.info("[PMGate] Incoming PM: owner_id=%s pm_mode=%s sender_id=%s sender_is_bot=%s sender_repr=%s",
+                 owner_id, mode, sender_id, getattr(sender, "is_bot", False), getattr(sender, "username", None))
+
+        if mode == "all":
+            log.debug("[PMGate] Mode is 'all' — allow PM")
+            return
+
         # Tidak menanggapi service messages, anonymous atau channel-sent
-        if not sender_id or await _is_privileged_sender(client, message, owner_id):
+        if not sender_id:
+            log.debug("[PMGate] No sender_id found — skip")
+            return
+        if await _is_privileged_sender(client, message, owner_id):
+            log.debug("[PMGate] Sender is privileged — skip PM gate")
             return
 
         # jika kontak, biarkan saat mode contacts
         if mode == "contacts":
             try:
-                if await _is_contact(client, sender_id):
-                    return
-            except Exception:
-                # jika pengecekan kontak gagal, default: tidak dianggap kontak
-                pass
+                is_contact = await _is_contact(client, sender_id)
+            except Exception as exc:
+                log.exception("[PMGate] Error checking contact for %s: %s", sender_id, exc)
+                is_contact = False
+            log.info("[PMGate] is_contact=%s for sender_id=%s", is_contact, sender_id)
+            if is_contact:
+                return
 
+        # Now we should reject and block
         rejection = str(
             get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
             or DEFAULT_PM_MESSAGE
         )
 
-        # Kirim balasan aman, hindari crash bila bot tidak dapat mengirim pesan
-        # lalu block sender agar tidak bisa melanjutkan PM.
+        # Kirim balasan aman, lalu block sender agar tidak bisa melanjutkan PM.
+        # Tambahkan logging ekstensif agar kita bisa memverifikasi eksekusi.
         try:
-            # Hindari reply ke akun bot
             if getattr(sender, "is_bot", False):
-                # jangan block bot accounts; hentikan propagation saja
+                log.info("[PMGate] Sender is bot — not blocking. StopPropagation")
                 raise StopPropagation
 
             # Kirim rejection message (jika diizinkan oleh Telegram)
             try:
                 await message.reply(rejection)
-            except (Forbidden, FloodWait, RPCError):
-                # Jika tidak bisa mengirim reply, tetap lanjut ke block agar chat terkunci
-                pass
-            except Exception:
-                pass
+                log.info("[PMGate] Sent rejection message to %s", sender_id)
+            except Exception as exc:
+                log.exception("[PMGate] Failed to send rejection to %s: %s", sender_id, exc)
 
             # Block sender untuk mencegah pengiriman pesan lanjutan
             try:
                 await client.block_user(sender_id)
-            except (Forbidden, FloodWait, RPCError):
-                # Be graceful jika block gagal
-                pass
-            except Exception:
-                pass
-
-            # Tandai di DB bahwa chat ini dikunci oleh mekanisme PM lock
-            try:
-                set_chat_lock(sender_id, True)
-            except Exception:
-                # jangan crash bila DB error
-                pass
+                log.info("[PMGate] Successfully blocked user %s", sender_id)
+                try:
+                    set_chat_lock(sender_id, True)
+                    log.info("[PMGate] set_chat_lock True for %s", sender_id)
+                except Exception as exc:
+                    log.exception("[PMGate] Failed to set_chat_lock for %s: %s", sender_id, exc)
+            except Exception as exc:
+                # Jangan menelan error tanpa log: catat stacktrace agar bisa diperbaiki
+                log.exception("[PMGate] block_user failed for %s: %s", sender_id, exc)
 
         finally:
             # Hentikan propagation supaya handler lain tidak memproses PM yang sama
+            log.debug("[PMGate] Raising StopPropagation for sender_id=%s", sender_id)
             raise StopPropagation
 
     @client.on_message(filters.incoming & filters.group, group=-80)
@@ -288,20 +300,20 @@ def setup(client):
             # tercatat di chat_lock sebagai locked; tidak mengubah block yang dibuat manual)
             try:
                 locked = list_locked_chats()
+                log.info("[PMGate] Unblocking locked chats: %s", locked)
                 for cid in locked:
                     try:
                         await client.unblock_user(cid)
-                    except (Forbidden, FloodWait, RPCError):
-                        pass
-                    except Exception:
-                        pass
+                        log.info("[PMGate] Successfully unblocked %s", cid)
+                    except Exception as exc:
+                        log.exception("[PMGate] Failed to unblock %s: %s", cid, exc)
                     try:
                         set_chat_lock(cid, False)
-                    except Exception:
-                        pass
-            except Exception:
+                    except Exception as exc:
+                        log.exception("[PMGate] Failed to set_chat_lock False for %s: %s", cid, exc)
+            except Exception as exc:
                 # jangan crash bila DB/Network error
-                pass
+                log.exception("[PMGate] Error during unblock all: %s", exc)
 
         labels = {"all": "Semua orang", "contacts": "Kontak saja", "nobody": "Tidak seorang pun"}
         await send_ui(client, message.chat.id, f"✅ PM Control: {labels[mode]}.")
