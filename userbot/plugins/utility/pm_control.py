@@ -21,7 +21,7 @@ from __future__ import annotations
 import time
 from collections.abc import Iterable
 
-from pyrogram import filters
+from pyrogram import StopPropagation, filters
 from pyrogram.enums import ChatType, MessageEntityType
 from pyrogram.errors import Forbidden, FloodWait, RPCError
 
@@ -177,20 +177,19 @@ def setup(client):
             # Reply di private chat aman; hindari reply loop dengan mengecek is_bot
             if getattr(sender, "is_bot", False):
                 # Jangan reply bot
-                return
+                raise StopPropagation
             await message.reply(rejection)
         except Forbidden:
             # bot dilarang mengirim pesan (di-blocked) — nothing to do
-            return
+            raise StopPropagation
         except FloodWait:
             # bila ada FloodWait, abaikan agar tidak crash (Pyrogram akan raise)
-            return
+            raise StopPropagation
         except Exception:
             # jangan crash; biarkan handler lain tetap berjalan
-            return
+            raise StopPropagation
         # Hentikan propagation supaya handler lain tidak memproses PM yang sama
-        # (Pyrogram: StopPropagation tidak selalu diperlukan, namun kita return setelah reply)
-        return
+        raise StopPropagation
 
     @client.on_message(filters.incoming & filters.group, group=-80)
     async def tagreply_gate(client, message):
