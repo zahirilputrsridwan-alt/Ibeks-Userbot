@@ -21,14 +21,14 @@ from __future__ import annotations
 import time
 from collections.abc import Iterable
 
-from pyrogram import StopPropagation, filters
+from pyrogram import filters
 from pyrogram.enums import ChatType, MessageEntityType
+from pyrogram.errors import Forbidden, FloodWait, RPCError
 
 from db import ensure_user_settings, get_setting, set_setting
 from plugins.utils.ui import send_ui
 from utils.filters import dynamic_command
 from utils.prefix_manager import get_owner_id, set_owner_id
-
 
 DEFAULT_PM_MODE = "all"
 DEFAULT_PM_MESSAGE = "🚫 PM DITOLAK"
@@ -54,7 +54,7 @@ async def _account_id(client) -> int:
     """Ambil ID akun userbot dan pastikan settings akun sudah tersedia."""
     owner_id = get_owner_id()
     if owner_id:
-        ensure_user_settings(owner_id)
+        ensure_user_settings(int(owner_id))
         return int(owner_id)
 
     me = await client.get_me()
@@ -79,11 +79,28 @@ async def _is_privileged_sender(client, message, owner_id: int) -> bool:
 
 
 async def _is_contact(client, user_id: int) -> bool:
-    """Cek kontak memakai API Pyrogram dengan dukungan hasil list/generator."""
-    contacts = await client.get_contacts()
+    """Cek kontak memakai API Pyrogram dengan dukungan objek User atau Dialog.
+    Be robust: get_contacts() bisa mengembalikan User objects atau Dialog-like objects
+    yang menyimpan .user.
+    """
+    try:
+        contacts = await client.get_contacts()
+    except RPCError:
+        # Jika ada error API, anggap bukan kontak (lebih aman)
+        return False
+
+    ids = set()
     if isinstance(contacts, Iterable):
-        return any(int(getattr(user, "id", 0) or 0) == user_id for user in contacts)
-    return False
+        for c in contacts:
+            # Pyrogram bisa mengembalikan User, or Dialog (dengan attribute .user)
+            uid = 0
+            if getattr(c, "id", None) is not None:
+                uid = int(getattr(c, "id", 0) or 0)
+            elif getattr(c, "user", None) is not None:
+                uid = int(getattr(getattr(c, "user"), "id", 0) or 0)
+            if uid:
+                ids.add(uid)
+    return user_id in ids
 
 
 def _entity_mentions_username(message, username: str) -> bool:
@@ -95,20 +112,24 @@ def _entity_mentions_username(message, username: str) -> bool:
     # parse_entities() menangani offset UTF-16 Telegram dengan aman.
     try:
         parsed = message.parse_entities()
+        # parsed: dict(MessageEntity -> str) pada Pyrogram; entity.type bisa berupa Enum atau string
         for entity, value in parsed.items():
-            if entity.type != MessageEntityType.MENTION:
-                continue
-            if str(value).casefold().lstrip("@") == username:
-                return True
+            etype = getattr(entity, "type", None)
+            # allow both enum and string comparisons
+            if (etype == MessageEntityType.MENTION) or (str(etype).lower() == "mention"):
+                if str(value).casefold().lstrip("@") == username:
+                    return True
     except Exception:
         # Fallback tetap mensyaratkan entity MENTION; hanya untuk kompatibilitas
         # objek Message sederhana pada versi Pyrogram yang berbeda.
         for entity in entities:
-            if entity.type != MessageEntityType.MENTION:
-                continue
-            value = text[entity.offset : entity.offset + entity.length]
-            if value.casefold().lstrip("@") == username:
-                return True
+            etype = getattr(entity, "type", None)
+            if (etype == MessageEntityType.MENTION) or (str(etype).lower() == "mention"):
+                offset = int(getattr(entity, "offset", 0) or 0)
+                length = int(getattr(entity, "length", 0) or 0)
+                value = text[offset : offset + length]
+                if value.casefold().lstrip("@") == username:
+                    return True
     return False
 
 
@@ -122,6 +143,10 @@ def setup(client):
     @client.on_message(filters.incoming & filters.private, group=-90)
     async def pm_gate(client, message):
         """Tolak PM sesuai mode tanpa pernah memproses pesan outgoing."""
+        # Hanya tangani pesan masuk dari user (bukan service/chat/channel)
+        if getattr(message.chat, "type", None) != ChatType.PRIVATE:
+            return
+
         owner_id = await _account_id(client)
         mode = str(get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)).casefold()
         if mode == "all":
@@ -129,18 +154,43 @@ def setup(client):
 
         sender = getattr(message, "from_user", None)
         sender_id = int(getattr(sender, "id", 0) or 0)
+        # Tidak menanggapi service messages, anonymous atau channel-sent
         if not sender_id or await _is_privileged_sender(client, message, owner_id):
             return
 
-        if mode == "contacts" and await _is_contact(client, sender_id):
-            return
+        # jika kontak, biarkan saat mode contacts
+        if mode == "contacts":
+            try:
+                if await _is_contact(client, sender_id):
+                    return
+            except Exception:
+                # jika pengecekan kontak gagal, default: tidak dianggap kontak
+                pass
 
         rejection = str(
             get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
             or DEFAULT_PM_MESSAGE
         )
-        await message.reply(rejection)
-        raise StopPropagation
+
+        # Kirim balasan aman, hindari crash bila bot tidak dapat mengirim pesan
+        try:
+            # Reply di private chat aman; hindari reply loop dengan mengecek is_bot
+            if getattr(sender, "is_bot", False):
+                # Jangan reply bot
+                return
+            await message.reply(rejection)
+        except Forbidden:
+            # bot dilarang mengirim pesan (di-blocked) — nothing to do
+            return
+        except FloodWait:
+            # bila ada FloodWait, abaikan agar tidak crash (Pyrogram akan raise)
+            return
+        except Exception:
+            # jangan crash; biarkan handler lain tetap berjalan
+            return
+        # Hentikan propagation supaya handler lain tidak memproses PM yang sama
+        # (Pyrogram: StopPropagation tidak selalu diperlukan, namun kita return setelah reply)
+        return
 
     @client.on_message(filters.incoming & filters.group, group=-80)
     async def tagreply_gate(client, message):
@@ -175,7 +225,16 @@ def setup(client):
             get_setting(owner_id, "tagreply_message", DEFAULT_TAGREPLY_MESSAGE)
             or DEFAULT_TAGREPLY_MESSAGE
         )
-        await message.reply(reply_text)
+        try:
+            if getattr(sender, "is_bot", False):
+                return
+            await message.reply(reply_text)
+        except Forbidden:
+            return
+        except FloodWait:
+            return
+        except Exception:
+            return
 
     @client.on_message(dynamic_command("pm") & filters.me)
     async def cmd_pm(client, message):
