@@ -1,0 +1,53 @@
+Perbaiki dan sempurnakan fitur `.pm nobody` yang sudah ada.
+
+ALUR YANG WAJIB:
+
+Ketika `.pm nobody` aktif dan seseorang mengirim pesan PRIVATE ke akun Userbot:
+
+1. Userbot mendeteksi incoming private message.
+2. Jangan melakukan BLOCK terhadap pengirim dalam kondisi apa pun.
+3. Jangan menggunakan `block_user`, `block_chat`, `add_to_blocklist`, atau API Telegram untuk memblokir user.
+4. Segera hapus pesan asli yang dikirim orang tersebut dari chat/inbox Userbot.
+5. Setelah pesan asli berhasil diproses/dihapus, kirim pesan penolakan kepada pengirim:
+   🚫 PM DITOLAK
+6. Pesan penolakan tersebut harus dikirim sebagai pesan biasa dari Userbot kepada pengirim.
+7. Pesan penolakan harus bisa diatur sendiri dengan command:
+   
+   `.pmmsg set <pesan>`
+
+   Contoh:
+   
+   `.pmmsg set 🚫 Maaf, saya sedang tidak menerima chat pribadi.`
+
+8. `.pmmsg status`
+   - Menampilkan pesan penolakan yang sedang digunakan.
+
+9. `.pmmsg reset`
+   - Mengembalikan pesan default:
+   
+   `🚫 PM DITOLAK`
+
+10. Jangan membuat pesan penolakan berulang tanpa batas jika orang tersebut mengirim banyak pesan berturut-turut. Gunakan cooldown/anti-spam yang sederhana.
+11. Jika `.pm all` aktif, jangan lakukan penolakan.
+12. Jika `.pm contacts` aktif, hanya PM dari non-kontak yang diproses dengan alur penolakan yang sama.
+13. Jangan menerapkan fitur ini pada grup/supergroup.
+14. Jangan memengaruhi Owner/Sudo yang memang dikecualikan oleh permission system Userbot.
+15. Jangan mengubah fitur lain yang sudah berjalan.
+
+PENTING:
+- `.pm nobody` berarti MENOLAK PM, bukan memblokir user.
+- Pengirim tetap boleh mengakses profil dan tetap tidak masuk daftar blocked.
+- Pesan asli pengirim harus tidak tetap berada di inbox Userbot setelah handler selesai.
+- Pastikan handler dipasang pada incoming PRIVATE MESSAGE, bukan hanya handler command `.pm`.
+- Pastikan pesan dari Userbot sendiri tidak diproses kembali oleh handler sehingga tidak terjadi loop.
+- Gunakan mekanisme delete message yang sesuai dengan library Telegram yang sudah digunakan project.
+- Gunakan database/config yang SUDAH ADA untuk menyimpan mode PM dan custom rejection message.
+- Jangan membuat database baru jika tidak diperlukan.
+
+SETELAH IMPLEMENTASI:
+1. Tampilkan file yang diubah.
+2. Jelaskan alur handler yang digunakan.
+3. Pastikan tidak ada kode block user.
+4. Jalankan Python syntax/compile check.
+5. Pastikan tidak ada duplicate handler.
+6. Restart Userbot dan lakukan test untuk `.pm nobody`.
