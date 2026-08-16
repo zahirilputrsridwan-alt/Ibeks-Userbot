@@ -214,8 +214,9 @@ def set_prefix(telegram_id: int, prefix: str) -> None:
 def set_chat_lock(chat_id: int, locked: bool, source: str = "manual") -> None:
     """Set a lock in the existing chat_lock table.
 
-    ``source='pm_control'`` is used only after Telegram confirms a block.  It
-    lets ``.pm all`` avoid unblocking chats manually locked by the owner.
+    ``source='pm_control'`` is retained to identify legacy PM-control locks.
+    It lets explicit ``.pm all``/``.pm contacts`` cleanup avoid touching chats
+    manually locked by the owner; the current PM gate never creates new locks.
     """
     source = str(source or "manual")
     conn = get_conn()

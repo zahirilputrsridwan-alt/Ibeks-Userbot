@@ -41,11 +41,12 @@ DEFAULT_PM_MODE = "all"
 DEFAULT_PM_MESSAGE = "🚫 PM DITOLAK"
 DEFAULT_TAGREPLY_MESSAGE = "Ada apa manggil-manggil saya? 😂"
 TAGREPLY_COOLDOWN_SECONDS = 8.0
+PM_REJECTION_COOLDOWN_SECONDS = 60.0
 
 # Debounce in-memory sengaja dipakai hanya untuk mencegah balasan berulang
 # selama proses aktif; konfigurasi tetap berada di SQLite.
 _last_tag_replies: dict[tuple[int, int], float] = {}
-_pm_rejections_sent: set[tuple[int, int, str]] = set()
+_last_pm_rejections: dict[tuple[int, int, str], float] = {}
 
 
 def _command_args(message) -> list[str]:
@@ -211,35 +212,51 @@ def setup(client):
             if is_contact:
                 return
 
-        rejection = str(
-            get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
-            or DEFAULT_PM_MESSAGE
-        )
-
         try:
-            if getattr(sender, "is_bot", False):
+            # Hapus pesan asli sebelum mengirim rejection.  Pesan rejection
+            # dikirim terpisah agar tidak menjadi reply terhadap pesan yang
+            # sudah dihapus dan tidak memicu loop karena handler incoming-only.
+            try:
+                await message.delete()
                 log.info(
-                    "[PMGate] sender_id=%s is a bot; rejection is not sent",
+                    "[PMGate] Deleted incoming PM sender_id=%s message_id=%s",
                     sender_id,
+                    getattr(message, "id", None),
                 )
-                return
+            except Exception as exc:
+                # Tetap coba mengirim rejection; kegagalan delete dicatat jelas
+                # agar izin Telegram dapat diperbaiki tanpa memblokir pengirim.
+                log.exception(
+                    "[PMGate] Failed to delete incoming PM sender_id=%s "
+                    "message_id=%s: %s",
+                    sender_id,
+                    getattr(message, "id", None),
+                    exc,
+                )
 
             # PM control is a rejection gate, not a Telegram blocklist feature.
             # This path intentionally performs no Telegram blocklist operation.
+            rejection = str(
+                get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
+                or DEFAULT_PM_MESSAGE
+            )
             rejection_key = (owner_id, sender_id, mode)
-            if rejection_key in _pm_rejections_sent:
+            now = time.monotonic()
+            last_rejection = _last_pm_rejections.get(rejection_key, 0.0)
+            if now - last_rejection < PM_REJECTION_COOLDOWN_SECONDS:
                 log.info(
-                    "[PMGate] Rejection already sent; suppressing repeat for "
-                    "sender_id=%s mode=%s",
+                    "[PMGate] Rejection cooldown active; suppressing repeat "
+                    "for sender_id=%s mode=%s",
                     sender_id,
                     mode,
                 )
             else:
                 try:
-                    await message.reply(rejection)
-                    _pm_rejections_sent.add(rejection_key)
+                    await client.send_message(sender_id, rejection)
+                    _last_pm_rejections[rejection_key] = now
                     log.info(
-                        "[PMGate] Rejection message sent to sender_id=%s mode=%s",
+                        "[PMGate] Rejection message sent as normal PM to "
+                        "sender_id=%s mode=%s",
                         sender_id,
                         mode,
                     )
