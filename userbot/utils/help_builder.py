@@ -34,7 +34,63 @@ UTILITY_DESCRIPTIONS = {
     "tt": "Download TikTok",
     "ig": "Download Instagram",
     "tgdl": "Download Telegram Private",
+    "pm": "Mengatur siapa yang boleh mengirim PM",
+    "pmmsg": "Mengatur pesan penolakan PM",
+    "tagreply": "Mengatur balasan otomatis saat di-tag",
 }
+
+
+def _utility_help_lines(prefix: str) -> list[str]:
+    """Susun panduan penggunaan command Utility yang memiliki beberapa opsi."""
+    return [
+        "📩 PM CONTROL",
+        "",
+        f"{prefix}.pm all",
+        "→ Semua orang boleh mengirim PM",
+        "",
+        f"{prefix}.pm contacts",
+        "→ Hanya kontak yang boleh mengirim PM",
+        "",
+        f"{prefix}.pm nobody",
+        "→ Semua PM ditolak tanpa memblokir user",
+        "",
+        "",
+        "✉️ PM MESSAGE",
+        "",
+        f"{prefix}.pmmsg set <pesan>",
+        "→ Mengatur pesan penolakan PM",
+        "",
+        f"{prefix}.pmmsg status",
+        "→ Melihat pesan penolakan saat ini",
+        "",
+        f"{prefix}.pmmsg reset",
+        "→ Mengembalikan pesan default",
+        "",
+        "",
+        "🔔 TAG REPLY",
+        "",
+        f"{prefix}.tagreply on",
+        "→ Aktifkan balasan otomatis saat Userbot di-tag di grup",
+        "",
+        f"{prefix}.tagreply off",
+        "→ Matikan Tag Reply",
+        "",
+        f"{prefix}.tagreply set <pesan>",
+        "→ Atur kata-kata balasan Tag Reply",
+        "",
+        f"{prefix}.tagreply status",
+        "→ Lihat status dan pesan Tag Reply",
+        "",
+        f"{prefix}.tagreply reset",
+        "→ Kembalikan pesan default Tag Reply",
+        "",
+        "",
+        "CONTOH:",
+        "",
+        f"{prefix}.pmmsg set 🚫 Maaf, saya sedang tidak menerima PM.",
+        "",
+        f"{prefix}.tagreply set Ada apa tag saya? 😂",
+    ]
 @dataclass(frozen=True)
 class PluginInfo:
     """Informasi command dari satu file plugin."""
@@ -277,5 +333,7 @@ def build_category_text(
             else ""
         )
         lines.append(f"• {prefix}{command}{description}")
+    if category.key == "utility":
+        lines.extend(["", *_utility_help_lines(prefix)])
     lines.extend(["", HELP_FOOTER])
     return "\n".join(lines)
