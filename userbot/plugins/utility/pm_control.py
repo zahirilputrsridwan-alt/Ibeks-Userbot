@@ -19,7 +19,6 @@ command/plugin lain tetap berjalan seperti sebelumnya.
 from __future__ import annotations
 
 import time
-import traceback
 from collections.abc import Iterable
 
 from pyrogram import StopPropagation, filters
@@ -46,6 +45,7 @@ TAGREPLY_COOLDOWN_SECONDS = 8.0
 # Debounce in-memory sengaja dipakai hanya untuk mencegah balasan berulang
 # selama proses aktif; konfigurasi tetap berada di SQLite.
 _last_tag_replies: dict[tuple[int, int], float] = {}
+_pm_rejections_sent: set[tuple[int, int, str]] = set()
 
 
 def _command_args(message) -> list[str]:
@@ -219,41 +219,30 @@ def setup(client):
         try:
             if getattr(sender, "is_bot", False):
                 log.info(
-                    "[PMGate] sender_id=%s is a bot; blocking is not attempted",
+                    "[PMGate] sender_id=%s is a bot; rejection is not sent",
                     sender_id,
                 )
                 return
 
-            # Do the Telegram operation first.  A database lock is only a
-            # record of a successful Telegram block, never an optimistic flag.
-            try:
-                log.info("[PMGate] Calling client.block_user(sender_id=%s)", sender_id)
-                await client.block_user(sender_id)
-                log.info("[PMGate] client.block_user succeeded for sender_id=%s", sender_id)
-            except Exception as exc:
-                log.exception(
-                    "[PMGate] client.block_user FAILED for sender_id=%s: %s",
+            # PM control is a rejection gate, not a Telegram blocklist feature.
+            # This path intentionally performs no Telegram blocklist operation.
+            rejection_key = (owner_id, sender_id, mode)
+            if rejection_key in _pm_rejections_sent:
+                log.info(
+                    "[PMGate] Rejection already sent; suppressing repeat for "
+                    "sender_id=%s mode=%s",
                     sender_id,
-                    exc,
+                    mode,
                 )
             else:
                 try:
-                    set_chat_lock(sender_id, True, source="pm_control")
-                    log.info(
-                        "[PMGate] chat_lock recorded: sender_id=%s source=pm_control",
-                        sender_id,
-                    )
-                except Exception as exc:
-                    log.exception(
-                        "[PMGate] chat_lock write FAILED after successful block "
-                        "for sender_id=%s: %s",
-                        sender_id,
-                        exc,
-                    )
-
-                try:
                     await message.reply(rejection)
-                    log.info("[PMGate] Rejection message sent to sender_id=%s", sender_id)
+                    _pm_rejections_sent.add(rejection_key)
+                    log.info(
+                        "[PMGate] Rejection message sent to sender_id=%s mode=%s",
+                        sender_id,
+                        mode,
+                    )
                 except Exception as exc:
                     log.exception(
                         "[PMGate] Rejection message FAILED for sender_id=%s: %s",
@@ -323,16 +312,14 @@ def setup(client):
             )
             return
 
-        # Jika owner membuka kembali ke 'all', lakukan unblock untuk semua chat
-        prev_mode = get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)
         set_setting(owner_id, "pm_mode", mode)
 
-        if mode == "all":
-            # Unblock chats yang sebelumnya kita blokir (catatan: unblock hanya chat yang
-            # tercatat di chat_lock sebagai locked; tidak mengubah block yang dibuat manual)
+        if mode in {"all", "contacts"}:
+            # Hanya command perubahan mode yang membersihkan sisa block dari
+            # versi lama. Lock manual Owner tidak disentuh.
             try:
                 locked = list_locked_chats(source="pm_control")
-                log.info("[PMGate] Unblocking PM-control locks only: %s", locked)
+                log.info("[PMGate] Unblocking legacy PM-control locks only: %s", locked)
                 for cid in locked:
                     try:
                         await client.unblock_user(cid)
@@ -345,7 +332,7 @@ def setup(client):
                         log.exception("[PMGate] Failed to set_chat_lock False for %s: %s", cid, exc)
             except Exception as exc:
                 # jangan crash bila DB/Network error
-                log.exception("[PMGate] Error during unblock all: %s", exc)
+                log.exception("[PMGate] Error during legacy PM-control cleanup: %s", exc)
 
         labels = {"all": "Semua orang", "contacts": "Kontak saja", "nobody": "Tidak seorang pun"}
         await send_ui(client, message.chat.id, f"✅ PM Control: {labels[mode]}.")
