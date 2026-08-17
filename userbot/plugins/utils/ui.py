@@ -70,10 +70,16 @@ async def edit_ui(
     if expandable:
         kwargs["parse_mode"] = ParseMode.HTML
         body = _expandable_html(body)
-    # gunakan message.chat.id dan message.message_id untuk kompatibilitas Pyrogram
+    # Pyrogram Message memakai `.id`; fallback menjaga kompatibilitas dengan
+    # object message lama yang mungkin hanya menyediakan `.message_id`.
+    message_id = getattr(message, "id", None)
+    if message_id is None:
+        message_id = getattr(message, "message_id", None)
+    if message_id is None:
+        raise AttributeError("Message object tidak memiliki id untuk diedit")
     return await client.edit_message_text(
         message.chat.id,
-        message.message_id,
+        message_id,
         str(body or "").strip(),
         reply_markup=reply_markup,
         **kwargs,

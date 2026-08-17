@@ -20,6 +20,7 @@ from utils.helper import get_ram_usage, get_cpu_usage
 from utils.uptime import format_uptime
 from utils.filters import dynamic_command
 from plugins.utils.ui import edit_ui, send_ui
+from utils.logger import log
 
 
 def setup(client):
@@ -73,5 +74,5 @@ def setup(client):
         )
         try:
             await edit_ui(client, sent, text, expandable=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            log.exception("[Ping] Gagal mengedit hasil ping: %s", exc)
