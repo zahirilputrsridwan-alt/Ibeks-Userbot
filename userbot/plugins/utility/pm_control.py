@@ -1,19 +1,25 @@
 """
-IBEKS USERBOT - PM Control dan Tag Reply.
+IBEKS USERBOT - PM Control + PMMSG + Tag Reply.
 
 Commands:
-  .pm all|contacts|nobody
-  .pmmsg set <pesan>
+  .pm all
+  .pm contacts
+  .pm nobody
+
+  .pmmsg <pesan>
   .pmmsg status
   .pmmsg reset
-  .tagreply on|off
+
+  .tagreply on
+  .tagreply off
   .tagreply set <pesan>
   .tagreply status
   .tagreply reset
 
-Semua konfigurasi disimpan melalui settings SQLite yang sudah digunakan
-project. Handler gate hanya menangani PM masuk dan mention di grup, sehingga
-command/plugin lain tetap berjalan seperti sebelumnya.
+PM Control tidak memblokir user Telegram.
+Mode nobody/contacts bekerja dengan menghapus PM yang ditolak,
+mengirim PMMSG, lalu menghentikan propagation agar plugin lain
+tidak ikut memproses pesan tersebut.
 """
 
 from __future__ import annotations
@@ -24,27 +30,22 @@ from collections.abc import Iterable
 from pyrogram import StopPropagation, filters
 from pyrogram.enums import ChatType, MessageEntityType
 from pyrogram.errors import Forbidden, FloodWait, RPCError
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from db import (
-    ensure_user_settings,
-    get_setting,
-    set_setting,
-    set_chat_lock,
-    list_locked_chats,
-)
+from db import ensure_user_settings, get_setting, set_setting
 from plugins.utils.ui import send_ui
 from utils.filters import dynamic_command
 from utils.prefix_manager import get_owner_id, set_owner_id
 from utils.logger import log
 
+
 DEFAULT_PM_MODE = "all"
-DEFAULT_PM_MESSAGE = "🚫 PM DITOLAK"
+DEFAULT_PM_MESSAGE = "🚫 Maaf, saya sedang tidak menerima PM."
 DEFAULT_TAGREPLY_MESSAGE = "Ada apa manggil-manggil saya? 😂"
+
 TAGREPLY_COOLDOWN_SECONDS = 8.0
 PM_REJECTION_COOLDOWN_SECONDS = 60.0
 
-# Debounce in-memory sengaja dipakai hanya untuk mencegah balasan berulang
-# selama proses aktif; konfigurasi tetap berada di SQLite.
 _last_tag_replies: dict[tuple[int, int], float] = {}
 _last_pm_rejections: dict[tuple[int, int, str], float] = {}
 
@@ -60,7 +61,6 @@ def _command_payload(message) -> str:
 
 
 async def _account_id(client) -> int:
-    """Ambil ID akun userbot dan pastikan settings akun sudah tersedia."""
     owner_id = get_owner_id()
     if owner_id:
         ensure_user_settings(int(owner_id))
@@ -74,148 +74,229 @@ async def _account_id(client) -> int:
 
 
 async def _is_privileged_sender(client, message, owner_id: int) -> bool:
-    """Pertahankan pengecualian Owner dari gate PM tanpa membuat permission baru."""
     sender = getattr(message, "from_user", None)
     sender_id = int(getattr(sender, "id", 0) or 0)
+
     if not sender_id:
         return False
+
     if sender_id == owner_id:
         return True
-    # Pesan dari akun sendiri biasanya bukan incoming, tetapi pengecualian ini
-    # menjaga perilaku bila Telegram mengirim update service yang tidak biasa.
-    me = await client.get_me()
-    return sender_id == int(me.id)
+
+    try:
+        me = await client.get_me()
+        return sender_id == int(me.id)
+    except Exception:
+        return False
 
 
 async def _is_contact(client, user_id: int) -> bool:
-    """Cek kontak memakai API Pyrogram dengan dukungan objek User atau Dialog.
-    Be robust: get_contacts() bisa mengembalikan User objects atau Dialog-like objects
-    yang menyimpan .user.
-    """
     try:
         contacts = await client.get_contacts()
     except RPCError as exc:
         log.exception("[PMGate] get_contacts() failed: %s", exc)
-        # Jika ada error API, anggap bukan kontak (lebih aman)
         return False
 
     ids = set()
+
     if isinstance(contacts, Iterable):
-        for c in contacts:
-            # Pyrogram bisa mengembalikan User, or Dialog (dengan attribute .user)
+        for item in contacts:
             uid = 0
-            if getattr(c, "id", None) is not None:
-                try:
-                    uid = int(getattr(c, "id", 0) or 0)
-                except Exception:
-                    uid = 0
-            elif getattr(c, "user", None) is not None:
-                try:
-                    uid = int(getattr(getattr(c, "user"), "id", 0) or 0)
-                except Exception:
-                    uid = 0
+
+            try:
+                if getattr(item, "id", None) is not None:
+                    uid = int(getattr(item, "id", 0) or 0)
+                elif getattr(item, "user", None) is not None:
+                    uid = int(getattr(item.user, "id", 0) or 0)
+            except (TypeError, ValueError):
+                uid = 0
+
             if uid:
                 ids.add(uid)
+
     return user_id in ids
 
 
 def _entity_mentions_username(message, username: str) -> bool:
-    """Deteksi @username dari entity Telegram, bukan pencarian teks biasa."""
     text = message.text or message.caption or ""
     entities = message.entities or message.caption_entities or []
     username = username.casefold().lstrip("@")
 
-    # parse_entities() menangani offset UTF-16 Telegram dengan aman.
     try:
         parsed = message.parse_entities()
-        # parsed: dict(MessageEntity -> str) pada Pyrogram; entity.type bisa berupa Enum atau string
+
         for entity, value in parsed.items():
             etype = getattr(entity, "type", None)
-            # allow both enum and string comparisons
-            if (etype == MessageEntityType.MENTION) or (str(etype).lower() == "mention"):
+
+            if (
+                etype == MessageEntityType.MENTION
+                or str(etype).lower() == "mention"
+            ):
                 if str(value).casefold().lstrip("@") == username:
                     return True
+
     except Exception:
-        # Fallback tetap mensyaratkan entity MENTION; hanya untuk kompatibilitas
-        # objek Message sederhana pada versi Pyrogram yang berbeda.
         for entity in entities:
             etype = getattr(entity, "type", None)
-            if (etype == MessageEntityType.MENTION) or (str(etype).lower() == "mention"):
-                offset = int(getattr(entity, "offset", 0) or 0)
-                length = int(getattr(entity, "length", 0) or 0)
-                value = text[offset : offset + length]
+
+            if (
+                etype == MessageEntityType.MENTION
+                or str(etype).lower() == "mention"
+            ):
+                try:
+                    offset = int(getattr(entity, "offset", 0) or 0)
+                    length = int(getattr(entity, "length", 0) or 0)
+                    value = text[offset : offset + length]
+                except Exception:
+                    continue
+
                 if value.casefold().lstrip("@") == username:
                     return True
+
     return False
 
 
-def _usage(command: str) -> str:
-    return f"❌ Gunakan: `{command}`"
-
-
 def _incoming_sender_id(message) -> int:
-    """Return the actual Telegram user that authored an incoming PM."""
     sender = getattr(message, "from_user", None)
-    sender_id = getattr(sender, "id", None)
     try:
-        return int(sender_id or 0)
+        return int(getattr(sender, "id", 0) or 0)
     except (TypeError, ValueError):
         return 0
 
 
-def setup(client):
-    """Daftarkan command konfigurasi dan dua gate otomatis."""
+def _pm_control_text(mode: str, pmmsg: str) -> str:
+    mode = mode.casefold()
 
+    labels = {
+        "all": "ALL",
+        "contacts": "CONTACTS",
+        "nobody": "NOBODY",
+    }
+
+    status = labels.get(mode, "ALL")
+
+    return (
+        "📩 PM CONTROL\n"
+        "\n"
+        "----------------------------------\n"
+        f"🚫 MODE : {status}\n"
+        f"✉️ PMMSG : {pmmsg}\n"
+    )
+
+
+def _pm_control_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton("🚫 NOBODY", callback_data="pmctl:nobody"),
+                InlineKeyboardButton("👥 CONTACTS", callback_data="pmctl:contacts"),
+                InlineKeyboardButton("✅ ALL", callback_data="pmctl:all"),
+            ],
+        ]
+    )
+
+
+def _pm_control_state(owner_id: int) -> tuple[str, str]:
+    mode = str(
+        get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)
+        or DEFAULT_PM_MODE
+    ).casefold()
+    pmmsg = str(
+        get_setting(
+            owner_id,
+            "pm_rejection_message",
+            DEFAULT_PM_MESSAGE,
+        )
+        or DEFAULT_PM_MESSAGE
+    )
+    return mode, pmmsg
+
+
+async def _send_pm_control(client, chat_id: int, owner_id: int) -> None:
+    mode, pmmsg = _pm_control_state(owner_id)
+    text = _pm_control_text(mode, pmmsg)
+
+    try:
+        await client.send_message(
+            chat_id,
+            text,
+            reply_markup=_pm_control_keyboard(),
+        )
+    except TypeError:
+        # Fallback kalau helper/client versi project tidak menerima markup.
+        await send_ui(client, chat_id, text)
+
+
+async def _edit_pm_control(client, panel_message, owner_id: int) -> None:
+    mode, pmmsg = _pm_control_state(owner_id)
+    await client.edit_message_text(
+        panel_message.chat.id,
+        panel_message.id,
+        _pm_control_text(mode, pmmsg),
+        reply_markup=_pm_control_keyboard(),
+    )
+
+
+def _is_pm_command(message) -> bool:
+    text = (message.text or message.caption or "").strip().casefold()
+
+    if not text:
+        return False
+
+    first = text.split(maxsplit=1)[0]
+    first = first.split("@", 1)[0]
+
+    return first in {
+        ".pm",
+        ".pmmsg",
+        ".tagreply",
+    }
+
+
+def setup(client):
+    """Register PM Control, PMMSG, dan Tag Reply."""
+
+    # ---------------------------------------------------------
+    # INCOMING PM GATE
+    # ---------------------------------------------------------
     @client.on_message(filters.incoming & filters.private, group=-200)
     async def pm_gate(client, message):
-        """Tolak PM sesuai mode tanpa pernah memproses pesan outgoing."""
         if getattr(message.chat, "type", None) != ChatType.PRIVATE:
             return
 
         owner_id = await _account_id(client)
-        mode = str(get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)).casefold()
+        mode = str(
+            get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)
+            or DEFAULT_PM_MODE
+        ).casefold()
 
-        sender = getattr(message, "from_user", None)
+        # ALL = PM normal.
+        if mode == "all":
+            return
+
         sender_id = _incoming_sender_id(message)
 
-        log.info(
-            "[PMGate] RECEIVED incoming private message: owner_id=%s mode=%s "
-            "sender_id=%s chat_id=%s sender_is_bot=%s username=%s",
-            owner_id,
-            mode,
-            sender_id,
-            getattr(message.chat, "id", None),
-            getattr(sender, "is_bot", False),
-            getattr(sender, "username", None),
-        )
-
-        if mode == "all":
-            log.debug("[PMGate] mode=all; allowing sender_id=%s", sender_id)
-            return
-
         if not sender_id:
-            log.warning(
-                "[PMGate] Reject gate skipped because message.from_user.id is missing"
-            )
-            return
-        if await _is_privileged_sender(client, message, owner_id):
-            log.info("[PMGate] sender_id=%s is privileged; allowing PM", sender_id)
             return
 
+        # Jangan tolak pesan dari akun sendiri.
+        if await _is_privileged_sender(client, message, owner_id):
+            return
+
+        # CONTACTS = kontak boleh masuk.
         if mode == "contacts":
             try:
-                is_contact = await _is_contact(client, sender_id)
+                if await _is_contact(client, sender_id):
+                    return
             except Exception as exc:
-                log.exception("[PMGate] Error checking contact for %s: %s", sender_id, exc)
-                is_contact = False
-            log.info("[PMGate] is_contact=%s for sender_id=%s", is_contact, sender_id)
-            if is_contact:
-                return
+                log.exception(
+                    "[PMGate] Contact check failed for %s: %s",
+                    sender_id,
+                    exc,
+                )
 
+        # NOBODY atau non-contact pada CONTACTS.
         try:
-            # Hapus pesan asli sebelum mengirim rejection.  Pesan rejection
-            # dikirim terpisah agar tidak menjadi reply terhadap pesan yang
-            # sudah dihapus dan tidak memicu loop karena handler incoming-only.
             try:
                 await message.delete()
                 log.info(
@@ -224,56 +305,94 @@ def setup(client):
                     getattr(message, "id", None),
                 )
             except Exception as exc:
-                # Tetap coba mengirim rejection; kegagalan delete dicatat jelas
-                # agar izin Telegram dapat diperbaiki tanpa memblokir pengirim.
                 log.exception(
-                    "[PMGate] Failed to delete incoming PM sender_id=%s "
-                    "message_id=%s: %s",
+                    "[PMGate] Failed deleting incoming PM sender_id=%s: %s",
                     sender_id,
-                    getattr(message, "id", None),
                     exc,
                 )
 
-            # PM control is a rejection gate, not a Telegram blocklist feature.
-            # This path intentionally performs no Telegram blocklist operation.
             rejection = str(
-                get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
+                get_setting(
+                    owner_id,
+                    "pm_rejection_message",
+                    DEFAULT_PM_MESSAGE,
+                )
                 or DEFAULT_PM_MESSAGE
             )
-            rejection_key = (owner_id, sender_id, mode)
+
+            key = (owner_id, sender_id, mode)
             now = time.monotonic()
-            last_rejection = _last_pm_rejections.get(rejection_key, 0.0)
-            if now - last_rejection < PM_REJECTION_COOLDOWN_SECONDS:
-                log.info(
-                    "[PMGate] Rejection cooldown active; suppressing repeat "
-                    "for sender_id=%s mode=%s",
-                    sender_id,
-                    mode,
-                )
-            else:
+            last = _last_pm_rejections.get(key, 0.0)
+
+            if now - last >= PM_REJECTION_COOLDOWN_SECONDS:
                 try:
                     await client.send_message(sender_id, rejection)
-                    _last_pm_rejections[rejection_key] = now
-                    log.info(
-                        "[PMGate] Rejection message sent as normal PM to "
-                        "sender_id=%s mode=%s",
-                        sender_id,
-                        mode,
-                    )
+                    _last_pm_rejections[key] = now
                 except Exception as exc:
                     log.exception(
-                        "[PMGate] Rejection message FAILED for sender_id=%s: %s",
+                        "[PMGate] Failed sending rejection to %s: %s",
                         sender_id,
                         exc,
                     )
 
         finally:
-            log.info("[PMGate] StopPropagation for incoming PM sender_id=%s", sender_id)
+            # Sangat penting: plugin lain tidak boleh menerima PM yang ditolak.
             raise StopPropagation
 
+    # ---------------------------------------------------------
+    # OUTGOING OWNER PM GATE
+    #
+    # Saat nobody aktif, owner juga tidak bisa membalas user:
+    # pesan outgoing private biasa dihapus.
+    #
+    # Command PM/PMMSG/TAGREPLY dikecualikan agar command tetap
+    # bisa dijalankan dari private chat.
+    # ---------------------------------------------------------
+    @client.on_message(filters.outgoing & filters.private, group=-190)
+    async def owner_pm_gate(client, message):
+        if _is_pm_command(message):
+            return
+
+        owner_id = await _account_id(client)
+        mode = str(
+            get_setting(owner_id, "pm_mode", DEFAULT_PM_MODE)
+            or DEFAULT_PM_MODE
+        ).casefold()
+
+        if mode == "all":
+            return
+
+        chat_id = int(getattr(message.chat, "id", 0) or 0)
+
+        if not chat_id or chat_id == owner_id:
+            return
+
+        if mode == "contacts":
+            try:
+                if await _is_contact(client, chat_id):
+                    return
+            except Exception:
+                pass
+
+        try:
+            await message.delete()
+            log.info(
+                "[PMGate] Deleted outgoing owner PM chat_id=%s mode=%s",
+                chat_id,
+                mode,
+            )
+        except Exception as exc:
+            log.exception(
+                "[PMGate] Failed deleting outgoing owner PM chat_id=%s: %s",
+                chat_id,
+                exc,
+            )
+
+    # ---------------------------------------------------------
+    # TAG REPLY GATE
+    # ---------------------------------------------------------
     @client.on_message(filters.incoming & filters.group, group=-80)
     async def tagreply_gate(client, message):
-        """Balas mention akun hanya di grup/supergroup dan saat fitur aktif."""
         if getattr(message.chat, "type", None) not in {
             ChatType.GROUP,
             ChatType.SUPERGROUP,
@@ -281,135 +400,309 @@ def setup(client):
             return
 
         owner_id = await _account_id(client)
+
         if not bool(get_setting(owner_id, "tagreply_enabled", 0)):
             return
 
         sender = getattr(message, "from_user", None)
         sender_id = int(getattr(sender, "id", 0) or 0)
-        if not sender_id or await _is_privileged_sender(client, message, owner_id):
+
+        if not sender_id:
+            return
+
+        if await _is_privileged_sender(client, message, owner_id):
             return
 
         me = await client.get_me()
         username = getattr(me, "username", None)
-        if not username or not _entity_mentions_username(message, username):
+
+        if not username:
+            return
+
+        if not _entity_mentions_username(message, username):
+            return
+
+        if getattr(sender, "is_bot", False):
             return
 
         now = time.monotonic()
         key = (int(message.chat.id), sender_id)
+
         if now - _last_tag_replies.get(key, 0.0) < TAGREPLY_COOLDOWN_SECONDS:
             return
+
         _last_tag_replies[key] = now
 
         reply_text = str(
-            get_setting(owner_id, "tagreply_message", DEFAULT_TAGREPLY_MESSAGE)
+            get_setting(
+                owner_id,
+                "tagreply_message",
+                DEFAULT_TAGREPLY_MESSAGE,
+            )
             or DEFAULT_TAGREPLY_MESSAGE
         )
+
         try:
-            if getattr(sender, "is_bot", False):
-                return
             await message.reply(reply_text)
-        except Forbidden:
-            return
-        except FloodWait:
+        except (Forbidden, FloodWait):
             return
         except Exception:
             return
 
-    @client.on_message(dynamic_command("pm") & filters.me)
+    # ---------------------------------------------------------
+    # .PM
+    # ---------------------------------------------------------
+    @client.on_message(dynamic_command("pm") & filters.me, group=-150)
     async def cmd_pm(client, message):
         owner_id = await _account_id(client)
         mode = _command_payload(message).casefold()
+
         if mode not in {"all", "contacts", "nobody"}:
             await send_ui(
                 client,
                 message.chat.id,
-                "╭─「 ❌ 𝗣𝗠 」\n│\n"
-                f"├ 📝 {_usage('.pm all|contacts|nobody')}\n"
-                "│\n╰─ ⨱ 𝗜𝗕𝗘𝗞𝗦 𝗨𝗦𝗘𝗥𝗕𝗢𝗧 ⨱",
+                "❌ Gunakan:\n"
+                ".pm all\n"
+                ".pm contacts\n"
+                ".pm nobody",
             )
             return
 
         set_setting(owner_id, "pm_mode", mode)
 
-        if mode in {"all", "contacts"}:
-            # Hanya command perubahan mode yang membersihkan sisa block dari
-            # versi lama. Lock manual Owner tidak disentuh.
-            try:
-                locked = list_locked_chats(source="pm_control")
-                log.info("[PMGate] Unblocking legacy PM-control locks only: %s", locked)
-                for cid in locked:
-                    try:
-                        await client.unblock_user(cid)
-                        log.info("[PMGate] Successfully unblocked %s", cid)
-                    except Exception as exc:
-                        log.exception("[PMGate] Failed to unblock %s: %s", cid, exc)
-                    try:
-                        set_chat_lock(cid, False, source="pm_control")
-                    except Exception as exc:
-                        log.exception("[PMGate] Failed to set_chat_lock False for %s: %s", cid, exc)
-            except Exception as exc:
-                # jangan crash bila DB/Network error
-                log.exception("[PMGate] Error during legacy PM-control cleanup: %s", exc)
+        labels = {
+            "all": "SEMUA PM DITERIMA",
+            "contacts": "HANYA KONTAK",
+            "nobody": "NOBODY AKTIF",
+        }
 
-        labels = {"all": "Semua orang", "contacts": "Kontak saja", "nobody": "Tidak seorang pun"}
-        await send_ui(client, message.chat.id, f"✅ PM Control: {labels[mode]}.")
+        await send_ui(
+            client,
+            message.chat.id,
+            f"✅ PM Control berhasil diubah.\n"
+            f"Mode: {labels[mode]}",
+        )
 
-    log.info("[PMGate] Registered incoming PM gate at handler group -200")
+        # Tampilkan status setelah command.
+        await _send_pm_control(client, message.chat.id, owner_id)
+        raise StopPropagation
 
-    @client.on_message(dynamic_command("pmmsg") & filters.me)
+    # ---------------------------------------------------------
+    # PM CONTROL BUTTONS
+    # ---------------------------------------------------------
+    @client.on_callback_query(filters.regex(r"^pmctl:(all|contacts|nobody)$"))
+    async def pm_control_callback(client, callback_query):
+        owner_id = await _account_id(client)
+
+        user = getattr(callback_query, "from_user", None)
+        user_id = int(getattr(user, "id", 0) or 0)
+
+        if user_id != owner_id:
+            await callback_query.answer(
+                "❌ Hanya owner yang bisa mengatur PM.",
+                show_alert=True,
+            )
+            return
+
+        mode = callback_query.data.split(":", 1)[1]
+        set_setting(owner_id, "pm_mode", mode)
+
+        await callback_query.answer(
+            "PM Control berhasil diubah.",
+            show_alert=False,
+        )
+
+        await _edit_pm_control(client, callback_query.message, owner_id)
+
+    # ---------------------------------------------------------
+    # .PMMSG
+    #
+    # FORMAT FINAL:
+    #   .pmmsg <pesan>
+    #   .pmmsg status
+    #   .pmmsg reset
+    #
+    # BUKAN:
+    #   .pmmsg set <pesan>
+    # ---------------------------------------------------------
+    @client.on_message(dynamic_command("pmmsg") & filters.me, group=-150)
     async def cmd_pmmsg(client, message):
         owner_id = await _account_id(client)
         args = _command_args(message)
-        action = args[0].casefold() if args else ""
-        payload = args[1].strip() if len(args) > 1 else ""
 
-        if action == "set" and payload:
-            set_setting(owner_id, "pm_rejection_message", payload)
-            await send_ui(client, message.chat.id, "✅ Pesan penolakan PM berhasil disimpan.")
-        elif action == "status":
-            current = get_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
-            await send_ui(client, message.chat.id, f"📩 Pesan penolakan PM saat ini:\n{current}")
-        elif action == "reset":
-            set_setting(owner_id, "pm_rejection_message", DEFAULT_PM_MESSAGE)
-            await send_ui(client, message.chat.id, "✅ Pesan penolakan PM dikembalikan ke default.")
-        else:
+        if not args:
+            current = str(
+                get_setting(
+                    owner_id,
+                    "pm_rejection_message",
+                    DEFAULT_PM_MESSAGE,
+                )
+                or DEFAULT_PM_MESSAGE
+            )
+
             await send_ui(
                 client,
                 message.chat.id,
-                "❌ Gunakan: `.pmmsg set <pesan>`, `.pmmsg status`, atau `.pmmsg reset`",
+                f"📩 PMMSG saat ini:\n{current}\n\n"
+                "Gunakan `.pmmsg <pesan>`",
+            )
+            raise StopPropagation
+
+        first = args[0].casefold()
+
+        if first == "status":
+            current = str(
+                get_setting(
+                    owner_id,
+                    "pm_rejection_message",
+                    DEFAULT_PM_MESSAGE,
+                )
+                or DEFAULT_PM_MESSAGE
             )
 
-    @client.on_message(dynamic_command("tagreply") & filters.me)
+            await send_ui(
+                client,
+                message.chat.id,
+                f"📩 PMMSG saat ini:\n{current}",
+            )
+            raise StopPropagation
+
+        if first == "reset" and len(args) == 1:
+            set_setting(
+                owner_id,
+                "pm_rejection_message",
+                DEFAULT_PM_MESSAGE,
+            )
+
+            await send_ui(
+                client,
+                message.chat.id,
+                "♻️ PMMSG berhasil direset.\n"
+                "Pesan kembali ke default.",
+            )
+            raise StopPropagation
+
+        # Semua input lainnya dianggap sebagai pesan PMMSG.
+        payload = " ".join(args).strip()
+
+        set_setting(
+            owner_id,
+            "pm_rejection_message",
+            payload,
+        )
+
+        await send_ui(
+            client,
+            message.chat.id,
+            "✅ PMMSG berhasil diganti.",
+        )
+        raise StopPropagation
+
+    # ---------------------------------------------------------
+    # .TAGREPLY
+    # ---------------------------------------------------------
+    @client.on_message(dynamic_command("tagreply") & filters.me, group=-150)
     async def cmd_tagreply(client, message):
         owner_id = await _account_id(client)
         args = _command_args(message)
-        action = args[0].casefold() if args else ""
-        payload = args[1].strip() if len(args) > 1 else ""
 
-        if action == "on":
+        action = args[0].casefold() if args else ""
+        payload = " ".join(args[1:]).strip() if len(args) > 1 else ""
+
+        if action == "on" and len(args) == 1:
             set_setting(owner_id, "tagreply_enabled", 1)
-            await send_ui(client, message.chat.id, "✅ Tag Reply diaktifkan.")
-        elif action == "off":
+
+            await send_ui(
+                client,
+                message.chat.id,
+                "✅ Tag Reply diaktifkan.",
+            )
+            raise StopPropagation
+
+        if action == "off" and len(args) == 1:
             set_setting(owner_id, "tagreply_enabled", 0)
-            await send_ui(client, message.chat.id, "✅ Tag Reply dimatikan.")
-        elif action == "set" and payload:
-            set_setting(owner_id, "tagreply_message", payload)
-            await send_ui(client, message.chat.id, "✅ Pesan Tag Reply berhasil disimpan.")
-        elif action == "status":
-            enabled = bool(get_setting(owner_id, "tagreply_enabled", 0))
-            current = get_setting(owner_id, "tagreply_message", DEFAULT_TAGREPLY_MESSAGE)
+
+            await send_ui(
+                client,
+                message.chat.id,
+                "✅ Tag Reply dimatikan.",
+            )
+            raise StopPropagation
+
+        if action == "set":
+            if not payload:
+                await send_ui(
+                    client,
+                    message.chat.id,
+                    "❌ Gunakan: .tagreply set <pesan>",
+                )
+                raise StopPropagation
+
+            set_setting(
+                owner_id,
+                "tagreply_message",
+                payload,
+            )
+
+            await send_ui(
+                client,
+                message.chat.id,
+                "✅ Pesan Tag Reply berhasil disimpan.",
+            )
+            raise StopPropagation
+
+        if action == "status" and len(args) == 1:
+            enabled = bool(
+                get_setting(
+                    owner_id,
+                    "tagreply_enabled",
+                    0,
+                )
+            )
+
+            current = str(
+                get_setting(
+                    owner_id,
+                    "tagreply_message",
+                    DEFAULT_TAGREPLY_MESSAGE,
+                )
+                or DEFAULT_TAGREPLY_MESSAGE
+            )
+
             status = "ON" if enabled else "OFF"
+
             await send_ui(
                 client,
                 message.chat.id,
-                f"🏷️ Tag Reply: {status}\n💬 Pesan: {current}",
+                f"🏷️ Tag Reply: {status}\n"
+                f"💬 Pesan: {current}",
             )
-        elif action == "reset":
-            set_setting(owner_id, "tagreply_message", DEFAULT_TAGREPLY_MESSAGE)
-            await send_ui(client, message.chat.id, "✅ Pesan Tag Reply dikembalikan ke default.")
-        else:
+            raise StopPropagation
+
+        if action == "reset" and len(args) == 1:
+            set_setting(
+                owner_id,
+                "tagreply_message",
+                DEFAULT_TAGREPLY_MESSAGE,
+            )
+
             await send_ui(
                 client,
                 message.chat.id,
-                "❌ Gunakan: `.tagreply on|off|set <pesan>|status|reset`",
+                "♻️ Tag Reply berhasil direset.",
             )
+            raise StopPropagation
+
+        await send_ui(
+            client,
+            message.chat.id,
+            "❌ Gunakan:\n"
+            ".tagreply on\n"
+            ".tagreply off\n"
+            ".tagreply set <pesan>\n"
+            ".tagreply status\n"
+            ".tagreply reset",
+        )
+
+    log.info("[PMControl] PM Control + PMMSG + Tag Reply registered.")
+    
